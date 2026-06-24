@@ -37,7 +37,7 @@ class Materia (models.Model):
 
 
 class Curso(models.Model):
-    paralelgo = models.CharField(max_length=5)
+    paralelo = models.CharField(max_length=5)
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE)
     docente = models.ForeignKey("usuario.Docente",on_delete=models.PROTECT)
 
