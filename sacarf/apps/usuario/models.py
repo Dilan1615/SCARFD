@@ -12,6 +12,12 @@ class Usuario(AbstractUser):
 class Docente(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete= models.CASCADE, related_name="docente")
 
+    def __str__(self):
+        return f"{self.usuario.first_name} {self.usuario.last_name}"
+
 class Estudiante(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete= models.CASCADE)
     carrera = models.ForeignKey("academico.Carrera", on_delete=models.PROTECT, related_name="estudiantes")
+
+    def __str__(self):
+        return f"{self.usuario.first_name} {self.usuario.last_name}"
