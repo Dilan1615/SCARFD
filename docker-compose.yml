@@ -1,0 +1,54 @@
+services:
+  db:
+    image: postgres:15
+    container_name: sacarf_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sacarf_db}
+      POSTGRES_USER: ${DB_USER:-sacarf_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sacarf_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sacarf_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sacarf_user} -d ${DB_NAME:-sacarf_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    container_name: sacarf_web
+    volumes:
+      - ./:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_NAME=${DB_NAME:-sacarf_db}
+      - DB_USER=${DB_USER:-sacarf_user}
+      - DB_PASSWORD=${DB_PASSWORD:-sacarf_2026}
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_ENGINE=django.db.backends.postgresql
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key-change-in-prod}
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - PYTHONPATH=/app
+      - BREVO_API_KEY=${BREVO_API_KEY}
+      - BREVO_FROM_EMAIL=${BREVO_FROM_EMAIL:-josephsebastiannq@gmail.com}
+      - BREVO_FROM_NAME=${BREVO_FROM_NAME:-SACARF}
+    working_dir: /app
+    networks:
+      - sacarf_network
+
+volumes:
+  postgres_data:
+
+networks:
+  sacarf_network:
+    driver: bridge
