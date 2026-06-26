@@ -20,11 +20,11 @@ Sistema web para el registro de asistencia de estudiantes mediante reconocimient
                            └─────────────────┘
 ```
 
-- **Frontend**: React 18 + Vite + Tailwind CSS + React Router
-- **Backend**: Django 5 + Django REST Framework + SimpleJWT
-- **Base de datos**: PostgreSQL
+- **Frontend**: React 19 + Vite + Tailwind CSS 4 + React Router 7 + Axios
+- **Backend**: Django 4.2 + Django REST Framework 3.17 + SimpleJWT + django-filter
+- **Base de datos**: PostgreSQL (SQLite en desarrollo local)
 - **Contenedores**: Docker / docker-compose
-- **Reconocimiento facial**: AWS Rekognition (S3 + Rekognition)
+- **Reconocimiento facial**: AWS Rekognition (IndexFaces + SearchFacesByImage) + S3
 - **Correo**: Brevo API (envío de enlaces de recuperación)
 
 ---
@@ -46,16 +46,16 @@ sacarf/
 │   │   ├── email_service.py       # Envío de correos vía Brevo API
 │   │   └── urls.py                # Rutas: token/, usuarios/, restablecimiento
 │   ├── academico/                 # Gestión académica
-│   │   ├── models.py              # Carrera, Ciclo, Materia, Horario
-│   │   ├── views.py               # ViewSets con IsAdminForMutation
+│   │   ├── models.py              # Carrera, Ciclo, Materia, Horario, Matricula
+│   │   ├── views.py               # ViewSets con IsAdminForMutation + mis_materias
 │   │   ├── serializers.py         # Validaciones de fechas y horas
-│   │   └── urls.py                # Rutas: carreras/, ciclos/, materias/, horarios/
+│   │   └── urls.py                # Rutas: carreras/, ciclos/, materias/, horarios/, matriculas/
 │   ├── asistencia/                # Registro de asistencia facial
 │   │   ├── models.py              # Asistencia, Justificacion, Reconocimiento, RegistroFacial
-│   │   ├── views.py               # AsistenciaViewSet, JustificacionViewSet, etc.
-│   │   ├── serializers.py         # Validación de horarios, duplicados, etc.
-│   │   ├── services.py            # Integración con AWS Rekognition
-│   │   └── urls.py                # Rutas: asistencias/, justificaciones/, etc.
+│   │   ├── views.py               # AsistenciaViewSet (registrar con Rekognition), JustificacionViewSet, RegistroFacialViewSet
+│   │   ├── serializers.py         # Validación de horarios, duplicados, días, etc.
+│   │   ├── services.py            # Integración con AWS Rekognition (IndexFaces, SearchFacesByImage, S3)
+│   │   └── urls.py                # Rutas: asistencias/, justificaciones/, registro-facial/, reconocimientos/
 │   └── reportes/                  # Generación de reportes
 │       ├── models.py              # Reporte (PDF/Excel/Dashboard)
 │       └── views.py               # ReporteViewSet
@@ -76,13 +76,16 @@ frontend/
 │   │   │   ├── CarrerasList.jsx   # CRUD carreras (solo admin)
 │   │   │   ├── CiclosList.jsx     # CRUD ciclos (solo admin)
 │   │   │   ├── MateriasList.jsx   # CRUD materias (solo admin)
-│   │   │   └── HorariosList.jsx   # CRUD horarios (solo admin)
+│   │   │   ├── HorariosList.jsx   # CRUD horarios (solo admin)
+│   │   │   └── MatriculasList.jsx # CRUD matrículas (solo admin)
 │   │   ├── asistencia/
-│   │   │   └── AsistenciaList.jsx # Registro y consulta de asistencias
+│   │   │   ├── AsistenciaList.jsx # Historial de asistencias (admin/docente)
+│   │   │   ├── AsistenciaHoy.jsx  # Asistencia del día con cámara (estudiante)
+│   │   │   └── RegistroRostro.jsx # Registro facial inicial (estudiante, una vez)
 │   │   └── reportes/
 │   │       └── ReportesList.jsx   # Generación de reportes
 │   ├── components/
-│   │   ├── Layout.jsx             # Layout principal con sidebar
+│   │   ├── Layout.jsx             # Layout principal con sidebar (role-based: admin/docente vs estudiante)
 │   │   ├── DataTable.jsx          # Tabla genérica con búsqueda y paginación
 │   │   └── FormModal.jsx          # Modal genérico para formularios
 │   ├── contexts/
@@ -115,8 +118,10 @@ docker-compose.yml                 # Orquestación de contenedores
 | **Ciclo** | `num`, `fecha_inicio`, `fecha_fin`, `estado` (ACTIVO/FINALIZADO) | FK → `Carrera` (unique_together: `num` + `carrera`) |
 | **Materia** | `codigo` (unique), `nombre`, `descripcion`, `creditos`, `horas_semanales` | FK → `Carrera`, FK → `Ciclo`, FK → `Usuario` (docente, con `limit_choices_to={'rol': 'DOCENTE'}`) |
 | **Horario** | `dia_semana`, `hora_inicio`, `hora_fin`, `minutos_tolerancia`, `aula` | FK → `Materia`. Validación: `hora_fin > hora_inicio` y sin solapamientos. |
+| **Matricula** | `fecha_matricula`, `estado` (ACTIVA/FINALIZADA) | FK → `Usuario` (estudiante, `limit_choices_to={'rol': 'ESTUDIANTE'}`), FK → `Carrera`, FK → `Ciclo`. Unique: `(estudiante, ciclo)`. |
 
-**Jerarquía**: `Carrera` → `Ciclo` → `Materia` → `Horario`
+**Jerarquía**: `Carrera` → `Ciclo` → `Materia` → `Horario`<br>
+**Matrícula**: vincula a un `Estudiante` con una `Carrera` y un `Ciclo` para registrar su enrollment.
 
 ### App `asistencia`
 
@@ -128,10 +133,10 @@ docker-compose.yml                 # Orquestación de contenedores
 | **Justificacion** | `motivo`, `fecha_solicitud`, `documento_url`, `estado` (PENDIENTE/APROBADA/RECHAZADA), `comentario_docente` | OneToOne → `Asistencia`, FK → `Usuario` (estudiante), FK → `Usuario` (docente_aprueba). |
 
 **Flujo de asistencia**:
-1. Estudiante se registra facialmente (guarda rostro en AWS Rekognition) → `RegistroFacial`
-2. En hora de clase, envía selfie → se busca en Rekognition → se crea `Reconocimiento`
-3. Si confianza ≥ 85% y coincide con el estudiante → se crea `Asistencia` (PRESENTE o TARDE según tolerancia)
-4. Si falta, puede justificar → se crea `Justificacion` (PENDIENTE), docente aprueba/rechaza
+1. **Registro facial único** — El estudiante accede a `/registro-rostro` y se toma una foto. El backend llama a `IndexFaces` de AWS Rekognition para indexar su rostro en la colección y crea un `RegistroFacial`.
+2. **Ver materias del día** — El estudiante ingresa a `/asistencia/hoy` y el endpoint `mis_materias` devuelve las materias del ciclo al que está matriculado, filtradas por el día de la semana actual. Si no tiene rostro registrado, se redirige automáticamente al registro facial.
+3. **Marcar asistencia** — Por cada horario de clase, el estudiante presiona "Marcar", se toma una selfie, y el backend llama a `SearchFacesByImage` de AWS Rekognition. Si la confianza ≥ 85% y el rostro coincide con el `ExternalImageId` del estudiante, se crea `Asistencia` con estado `PRESENTE` o `TARDE` según la tolerancia del horario.
+4. **Justificación** — Si el estudiante falta, puede crear una `Justificacion` (estado `PENDIENTE`) y el docente aprueba o rechaza, cambiando la asistencia a `JUSTIFICADO`.
 
 ### App `reportes`
 
@@ -145,9 +150,9 @@ docker-compose.yml                 # Orquestación de contenedores
 
 | Rol | Usuarios | Académico | Asistencia | Perfil propio |
 |-----|----------|-----------|------------|---------------|
-| **ADMIN** | CRUD completo (desactivar) | CRUD completo | Lectura | Edición |
+| **ADMIN** | CRUD completo (desactivar) | CRUD completo (carreras, ciclos, materias, horarios, matrículas) | Lectura + gestión de justificaciones | Edición |
 | **DOCENTE** | Solo lectura propia | Solo lectura | Gestión de justificaciones + ver asistencias de sus materias | Edición |
-| **ESTUDIANTE** | Solo lectura propia | Solo lectura | Registrar asistencia + justificar | Edición |
+| **ESTUDIANTE** | Solo lectura propia | Solo lectura (vía mis_materias) | Registrar asistencia facial + justificar | Edición |
 
 El permiso `IsAdminForMutation` (en `usuario/permissions.py`) restringe las acciones `create`, `update`, `partial_update` y `destroy` solo a usuarios con `rol == 'ADMIN'`; el resto solo pueden leer (`list`, `retrieve`).
 
@@ -250,7 +255,8 @@ FRONTEND_URL=http://localhost:5173
 AWS_ACCESS_KEY_ID=...
 AWS_SECRET_ACCESS_KEY=...
 AWS_REGION=us-east-1
-AWS_S3_BUCKET=sacarf-facial
+AWS_S3_BUCKET=sacarf-images
+REKOGNITION_COLLECTION_ID=sacarf_faces
 ```
 
 ---
@@ -282,15 +288,19 @@ AWS_S3_BUCKET=sacarf-facial
 | GET/POST | `/api/academico/ciclos/` | CRUD ciclos |
 | GET/POST | `/api/academico/materias/` | CRUD materias |
 | GET/POST | `/api/academico/horarios/` | CRUD horarios |
+| GET/POST | `/api/academico/matriculas/` | CRUD matrículas (solo admin) |
+| GET | `/api/academico/matriculas/mis_materias/` | Materias del día del estudiante autenticado (con estado de asistencia) |
 
 ### Asistencia
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/api/asistencia/asistencias/registrar/` | Registrar asistencia con foto |
-| GET | `/api/asistencia/asistencias/` | Listar asistencias |
+| GET | `/api/asistencia/asistencias/` | Listar asistencias (filtrado por rol) |
+| POST | `/api/asistencia/asistencias/registrar/` | Registrar asistencia con foto (Rekognition SearchFacesByImage) |
+| GET | `/api/asistencia/asistencias/por_estudiante/` | Asistencias por estudiante |
+| GET | `/api/asistencia/asistencias/por_materia/` | Asistencias por materia |
 | POST | `/api/asistencia/justificaciones/` | Crear justificación |
 | POST | `/api/asistencia/justificaciones/aprobar/` | Aprobar/rechazar justificación (docente) |
-| POST | `/api/asistencia/registro-facial/registrar-rostro/` | Registrar rostro en AWS Rekognition |
+| POST | `/api/asistencia/registro-facial/registrar_rostro/` | Registrar rostro en AWS Rekognition (IndexFaces) — una sola vez |
 
 ---
 
@@ -298,8 +308,8 @@ AWS_S3_BUCKET=sacarf-facial
 
 | Capa | Tecnología |
 |------|------------|
-| Frontend | React 18, Vite, Tailwind CSS, React Router, Axios |
-| Backend | Django 5, Django REST Framework, SimpleJWT, django-filter, drf-yasg |
+| Frontend | React 19, Vite 8, Tailwind CSS 4, React Router 7, Axios, Lucide React |
+| Backend | Django 4.2, Django REST Framework 3.17, SimpleJWT, django-filter |
 | Base de datos | PostgreSQL |
 | Reconocimiento facial | AWS Rekognition + S3 |
 | Correo | Brevo API (transactional email) |
