@@ -11,7 +11,10 @@ import CarrerasList from './pages/academico/CarrerasList'
 import CiclosList from './pages/academico/CiclosList'
 import MateriasList from './pages/academico/MateriasList'
 import HorariosList from './pages/academico/HorariosList'
+import MatriculasList from './pages/academico/MatriculasList'
 import AsistenciaList from './pages/asistencia/AsistenciaList'
+import AsistenciaHoy from './pages/asistencia/AsistenciaHoy'
+import RegistroRostro from './pages/asistencia/RegistroRostro'
 import ReportesList from './pages/reportes/ReportesList'
 
 function PrivateRoute({ children }) {
@@ -37,7 +40,10 @@ export default function App() {
           <Route path="academico/ciclos" element={<CiclosList />} />
           <Route path="academico/materias" element={<MateriasList />} />
           <Route path="academico/horarios" element={<HorariosList />} />
+          <Route path="academico/matriculas" element={<MatriculasList />} />
           <Route path="asistencia" element={<AsistenciaList />} />
+          <Route path="asistencia/hoy" element={<AsistenciaHoy />} />
+          <Route path="registro-rostro" element={<RegistroRostro />} />
           <Route path="reportes" element={<ReportesList />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />

@@ -3,23 +3,32 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, CalendarCheck,
-  ClipboardList, LogOut, Menu, X, ChevronDown, User,
+  ClipboardList, LogOut, Menu, X, ChevronDown, User, ScanFace,
 } from 'lucide-react'
 
 function useNavItems() {
   const { user } = useAuth()
   const isAdmin = user?.rol === 'ADMIN'
+  const isStudent = user?.rol === 'ESTUDIANTE'
   return [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     ...(isAdmin ? [{ to: '/usuarios', label: 'Usuarios', icon: Users }] : []),
     { to: '/perfil', label: 'Mi Perfil', icon: User },
-    { to: '/academico', label: 'Académico', icon: GraduationCap, children: [
-      { to: '/academico/carreras', label: 'Carreras' },
-      { to: '/academico/ciclos', label: 'Ciclos' },
-      { to: '/academico/materias', label: 'Materias' },
-      { to: '/academico/horarios', label: 'Horarios' },
-    ]},
-    { to: '/asistencia', label: 'Asistencia', icon: CalendarCheck },
+    ...(isAdmin || user?.rol === 'DOCENTE' ? [{
+      to: '/academico', label: 'Académico', icon: GraduationCap, children: [
+        { to: '/academico/carreras', label: 'Carreras' },
+        { to: '/academico/ciclos', label: 'Ciclos' },
+        { to: '/academico/materias', label: 'Materias' },
+        { to: '/academico/horarios', label: 'Horarios' },
+        { to: '/academico/matriculas', label: 'Matrículas' },
+      ]
+    }] : []),
+    ...(isStudent ? [
+      { to: '/asistencia/hoy', label: 'Asistencia Hoy', icon: CalendarCheck },
+      { to: '/registro-rostro', label: 'Registrar Rostro', icon: ScanFace },
+    ] : [
+      { to: '/asistencia', label: 'Asistencia', icon: CalendarCheck },
+    ]),
     { to: '/reportes', label: 'Reportes', icon: ClipboardList },
   ]
 }

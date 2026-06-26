@@ -18,6 +18,10 @@ class EstadoCiclo(models.TextChoices):
     ACTIVO = 'ACTIVO', 'Activo'
     FINALIZADO = 'FINALIZADO', 'Finalizado'
 
+class EstadoMatricula(models.TextChoices):
+    ACTIVA = 'ACTIVA', 'Activa'
+    FINALIZADA = 'FINALIZADA', 'Finalizada'
+
 class Carrera(models.Model):
     codigo = models.CharField(max_length=20, unique=True)
     nombre = models.CharField(max_length=100)
@@ -69,7 +73,7 @@ class Materia(models.Model):
 class Horario(models.Model):
     dia_semana = models.CharField(max_length=10, choices=DiaSemana.choices)
     hora_inicio = models.TimeField()
-    hora_fin = models.TimeField()
+    hora_fin = models.TimeField()   
     minutos_tolerancia = models.PositiveIntegerField(default=10, help_text='Minutos de tolerancia para tardanza')
     aula = models.CharField(max_length=50, blank=True)
     materia = models.ForeignKey(Materia, on_delete=models.CASCADE, related_name='horarios')
@@ -95,3 +99,20 @@ class Horario(models.Model):
         for h in overlapping:
             if not (self.hora_fin <= h.hora_inicio or self.hora_inicio >= h.hora_fin):
                 raise ValidationError("El horario se solapa con otro existente")
+
+class Matricula(models.Model):
+    estudiante = models.ForeignKey('usuario.Usuario', on_delete=models.CASCADE,
+                                   related_name='matriculas',
+                                   limit_choices_to={'rol': 'ESTUDIANTE'})
+    carrera = models.ForeignKey(Carrera, on_delete=models.CASCADE, related_name='matriculas')
+    ciclo = models.ForeignKey(Ciclo, on_delete=models.CASCADE, related_name='matriculas')
+    fecha_matricula = models.DateField(auto_now_add=True)
+    estado = models.CharField(max_length=10, choices=EstadoMatricula.choices, default='ACTIVA')
+
+    class Meta:
+        db_table = 'matricula'
+        unique_together = ['estudiante', 'ciclo']
+        ordering = ['-fecha_matricula']
+
+    def __str__(self):
+        return f"{self.estudiante.username} - {self.ciclo}"

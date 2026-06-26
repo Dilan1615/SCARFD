@@ -21,7 +21,7 @@ class AwsRekognitionService:
             aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY') # Se obtiene la clave secreta de AWS desde las variables de entorno
         )
         self.bucket_name = os.getenv('AWS_S3_BUCKET', 'sacarf-images') # Se obtiene el nombre del bucket de S3 desde las variables de entorno, con un valor por defecto de 'sacarf-images'
-        self.collection_id = 'sacarf_faces' # Se define el ID de la colección de rostros en Rekognition, que se utilizará para almacenar y buscar rostros
+        self.collection_id = os.getenv('REKOGNITION_COLLECTION_ID', 'sacarf_faces') # Se define el ID de la colección de rostros en Rekognition, que se utilizará para almacenar y buscar rostros
 
     def crear_collection(self):
         """Crea la colección de faces en AWS Rekognition si no existe"""
