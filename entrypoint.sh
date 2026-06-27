@@ -1,14 +1,21 @@
-#!/bin/bash
+#!/bin/sh
 set -e
 
 echo "Ejecutando migraciones..."
+python sacarf/manage.py makemigrations --noinput
 python sacarf/manage.py migrate --noinput
 
 echo "Creando superusuario por defecto (si no existe)..."
 python sacarf/manage.py shell -c "
 from apps.usuario.models import Usuario
-if not Usuario.objects.filter(username='admin').exists():
-    Usuario.objects.create_superuser('admin', 'admin@sacarf.com', 'admin123', cedula='0000000000', rol='ADMIN')
+
+if not Usuario.objects.filter(email='admin@sacarf.com').exists():
+    Usuario.objects.create_superuser(
+        email='admin@sacarf.com',
+        password='admin123',
+        cedula='0000000000',
+        rol='ADMIN'
+    )
     print('Superusuario admin creado')
 else:
     print('Superusuario admin ya existe')

@@ -35,7 +35,7 @@ class RegistroFacial(models.Model):
         db_table = 'registro_facial'
 
     def __str__(self):
-        return f"Registro facial de {self.estudiante.username}"
+        return f"Registro facial de {self.estudiante.email}"
 
 
 # Modelo para almacenar los resultados de los reconocimientos faciales realizados 
@@ -56,7 +56,7 @@ class Reconocimiento(models.Model):
         ordering = ['-fecha_hora']
 
     def __str__(self):
-        return f"Reconocimiento {self.estudiante.username} - {self.fecha_hora}"
+        return f"Reconocimiento {self.estudiante.email} - {self.fecha_hora}"
 
 # Modelo para almacenar la asistencia de los estudiantes a las clases
 class Asistencia(models.Model):
@@ -78,7 +78,7 @@ class Asistencia(models.Model):
         unique_together = ['estudiante', 'horario', 'fecha']
 
     def __str__(self):
-        return f"{self.estudiante.username} - {self.get_estado_display()} - {self.fecha}"
+        return f"{self.estudiante.email} - {self.get_estado_display()} - {self.fecha}"
 
 
     # Método de clase para registrar la asistencia de un estudiante a una clase
@@ -157,7 +157,7 @@ class Justificacion(models.Model):
         ordering = ['-fecha_solicitud']
 
     def __str__(self):
-        return f"Justificación {self.estudiante.username} - {self.asistencia.fecha}"
+        return f"Justificación {self.estudiante.email} - {self.asistencia.fecha}"
 
     # Método para aprobar la justificación de inasistencia
     def aprobar(self, docente, comentario=''):

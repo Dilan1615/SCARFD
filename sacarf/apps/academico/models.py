@@ -115,4 +115,4 @@ class Matricula(models.Model):
         ordering = ['-fecha_matricula']
 
     def __str__(self):
-        return f"{self.estudiante.username} - {self.ciclo}"
+        return f"{self.estudiante.email} - {self.ciclo}"

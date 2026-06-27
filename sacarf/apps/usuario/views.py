@@ -120,8 +120,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         threading.Thread(target=enviar_email, daemon=True).start()
 
         return Response({
-            'mensaje': 'Se ha enviado un código de verificación a tu correo',
-            'token': token,
+            'mensaje': 'Se ha enviado un código de verificación a tu correo'
         })
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])

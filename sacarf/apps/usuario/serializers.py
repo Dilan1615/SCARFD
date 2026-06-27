@@ -16,7 +16,7 @@ def validar_password_segura(value):
 class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'cedula', 'telefono', 'rol', 'foto_referencia_url', 'is_active']
+        fields = ['id', 'email', 'first_name', 'last_name', 'cedula', 'telefono', 'rol', 'foto_referencia_url', 'is_active']
         read_only_fields = ['id', 'is_active']
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -25,17 +25,18 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['username', 'email', 'password', 'first_name', 'last_name', 'cedula', 'telefono', 'rol', 'foto_referencia_url']
+        fields = [ 'email', 'password', 'first_name', 'last_name', 'cedula', 'telefono', 'rol', 'foto_referencia_url']
 
     def validate_password(self, value):
         validar_password_segura(value)
         return value
 
     def create(self, validated_data):
-        password = validated_data.pop('password')
-        user = Usuario(**validated_data)
-        user.set_password(password)
-        user.save()
+        password = validated_data.pop("password")
+        user = Usuario.objects.create_user(
+            password=password,
+            **validated_data
+        )
         return user
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -50,9 +51,9 @@ class SolicitarRestablecimientoSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if not Usuario.objects.filter(email=value).exists():
-            raise serializers.ValidationError('No existe un usuario con este correo')
-        return value.lower()
+        if Usuario.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Este correo ya esta registrado")
+        return 
 
 class RestablecerPasswordSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)

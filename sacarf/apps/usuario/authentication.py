@@ -7,13 +7,14 @@ from rest_framework_simplejwt.exceptions import AuthenticationFailed
 class EmailOrUsernameModelBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
         UserModel = get_user_model()
-        if username is None:
-            username = kwargs.get(UserModel.USERNAME_FIELD)
+        identifier = username or kwargs.get(UserModel.USERNAME_FIELD)
+        if identifier is None:
+            return None
         try:
-            user = UserModel.objects.get(username=username)
+            user = UserModel.objects.get(**{UserModel.USERNAME_FIELD: identifier})
         except UserModel.DoesNotExist:
             try:
-                user = UserModel.objects.get(email=username)
+                user = UserModel.objects.get(email=identifier)
             except UserModel.DoesNotExist:
                 return None
         if user.check_password(password) and self.user_can_authenticate(user):
