@@ -8,7 +8,6 @@ import { Users } from 'lucide-react'
 
 const baseColumns = [
   { key: 'foto_referencia_url', label: 'Foto', render: (v) => v ? <img src={v} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200" /> : <div className="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-400 text-xs">—</div> },
-  { key: 'username', label: 'Usuario' },
   { key: 'first_name', label: 'Nombres', render: (v, r) => `${r.first_name} ${r.last_name}` },
   { key: 'email', label: 'Email' },
   { key: 'cedula', label: 'Cédula' },
@@ -27,7 +26,6 @@ const adminColumns = [
 ]
 
 const formFields = [
-  { key: 'username', label: 'Usuario', type: 'text', required: true },
   { key: 'email', label: 'Email', type: 'email' },
   { key: 'password', label: 'Contraseña', type: 'password', hint: 'Mín. 8 caracteres, 1 mayúscula, 1 número, 1 símbolo' },
   { key: 'first_name', label: 'Nombres', type: 'text' },
@@ -103,7 +101,7 @@ export default function UsuariosList() {
   }
 
   const handleDelete = async (item) => {
-    if (!confirm(`¿Desactivar usuario "${item.username}"?`)) return
+    if (!confirm(`¿Desactivar usuario "${item.email}"?`)) return
     try {
       await api.delete(`/usuario/usuarios/${item.id}/`)
       addToast('Usuario desactivado exitosamente')

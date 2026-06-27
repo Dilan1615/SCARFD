@@ -5,7 +5,7 @@ import { Eye, EyeOff, LogIn, AlertCircle, Mail, Lock } from 'lucide-react'
 
 export default function Login() {
   const { login } = useAuth()
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
@@ -21,7 +21,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await login(username, password)
+      await login(email, password)
       window.location.href = '/'
     } catch {
       setError('Credenciales inválidas. Intente nuevamente.')
@@ -91,15 +91,15 @@ export default function Login() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Usuario o Email</label>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Correo</label>
                   <div className="relative">
                     <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full h-11 pl-10 pr-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-unl-red/20 focus:border-unl-red outline-none transition-all text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white"
-                      placeholder="Ingrese su usuario o correo"
+                      placeholder="Ingrese su correo"
                       required
                     />
                   </div>

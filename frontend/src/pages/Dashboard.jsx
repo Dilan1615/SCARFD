@@ -61,7 +61,6 @@ export default function Dashboard() {
 
   const userInfo = [
     { label: 'Nombres', value: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || '-' },
-    { label: 'Usuario', value: user?.username || '-' },
     { label: 'Email', value: user?.email || '-' },
     { label: 'Cédula', value: user?.cedula || '-' },
   ]
