@@ -53,7 +53,7 @@ export default function MatriculasList() {
   useEffect(() => { load() }, [])
 
   const formFields = [
-    { key: 'estudiante', label: 'Estudiante', type: 'select', required: true,
+    { key: 'estudiante_id', label: 'Estudiante', type: 'select', required: true,
       options: estudiantes.map(e => ({ value: e.id, label: `${e.first_name} ${e.last_name} (${e.cedula})` }))
     },
     { key: 'carrera', label: 'Carrera', type: 'select', required: true,
@@ -77,7 +77,7 @@ export default function MatriculasList() {
     setSubmitting(true)
     try {
       const payload = {
-        estudiante: Number(form.estudiante),
+        estudiante_id: Number(form.estudiante_id),
         carrera: Number(form.carrera),
         ciclo: Number(form.ciclo),
         estado: form.estado,
