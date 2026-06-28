@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { ClipboardList, FileText, FileSpreadsheet } from 'lucide-react'
 
 const columns = [
@@ -19,16 +20,21 @@ const columns = [
 export default function ReportesList() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
 
   const load = () => {
     setLoading(true)
-    api.get('/reportes/reportes/').then(({ data: res }) => setData(res.results || res)).finally(() => setLoading(false))
+    setServiceDown(false)
+    api.get('/reportes/reportes/').then(({ data: res }) => setData(res.results || res)).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="reportes" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-black/10 flex items-center justify-center">
           <ClipboardList size={20} className="text-unl-black" />

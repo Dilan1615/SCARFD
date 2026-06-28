@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../contexts/AuthContext'
 import AsistenciaHoy from './asistencia/AsistenciaHoy'
-import { Users, GraduationCap, BookOpen, CalendarCheck, TrendingUp, Clock, Shield, Camera } from 'lucide-react'
+import { Users, GraduationCap, BookOpen, CalendarCheck, TrendingUp, Clock, Shield, Camera, WifiOff } from 'lucide-react'
 
 function StatCard({ icon: Icon, label, value, color, delay }) {
   return (
@@ -30,18 +30,28 @@ export default function Dashboard() {
   const isStudent = user?.rol === 'ESTUDIANTE'
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [servicesDown, setServicesDown] = useState([])
+
+  const SERVICE_LABELS = {
+    academico: { label: 'Académico', icon: GraduationCap },
+    usuario: { label: 'Usuarios', icon: Users },
+    asistencia: { label: 'Asistencia', icon: CalendarCheck },
+    reportes: { label: 'Reportes', icon: TrendingUp },
+  }
 
   useEffect(() => {
     if (isStudent) {
       setLoading(false)
       return
     }
+    const down = []
     Promise.all([
-      api.get('/academico/carreras/').catch(() => ({ data: [] })),
+      api.get('/academico/carreras/').catch((e) => { down.push('academico'); return { data: [] } }),
       api.get('/academico/materias/').catch(() => ({ data: [] })),
-      api.get('/usuario/usuarios/').catch(() => ({ data: [] })),
-      api.get('/asistencia/asistencias/').catch(() => ({ data: [] })),
+      api.get('/usuario/usuarios/').catch((e) => { down.push('usuario'); return { data: [] } }),
+      api.get('/asistencia/asistencias/').catch((e) => { down.push('asistencia'); return { data: [] } }),
     ]).then(([carreras, materias, usuarios, asistencias]) => {
+      setServicesDown(down)
       setStats({
         carreras: carreras.data.length || carreras.data.results?.length || 0,
         materias: materias.data.length || materias.data.results?.length || 0,
@@ -105,6 +115,28 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {servicesDown.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-3 mb-2">
+            <WifiOff size={18} className="text-amber-600 shrink-0" />
+            <p className="text-sm font-bold text-amber-800">Servicios en mantenimiento</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {servicesDown.map((s) => {
+              const info = SERVICE_LABELS[s] || { label: s, icon: WifiOff }
+              return (
+                <span key={s} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 rounded-xl text-xs font-semibold text-amber-700">
+                  <info.icon size={14} />
+                  {info.label}
+                  <span className="text-amber-400">—</span>
+                  <span className="text-amber-500 font-medium">Sin conexión</span>
+                </span>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {isStudent ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

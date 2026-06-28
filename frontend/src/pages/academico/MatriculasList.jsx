@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { ScrollText } from 'lucide-react'
@@ -24,6 +25,7 @@ export default function MatriculasList() {
   const [carreras, setCarreras] = useState([])
   const [ciclos, setCiclos] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
   const [modal, setModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -31,6 +33,7 @@ export default function MatriculasList() {
 
   const load = () => {
     setLoading(true)
+    setServiceDown(false)
     Promise.all([
       api.get('/academico/matriculas/').then(r => r.data.results || r.data),
       api.get('/usuario/usuarios/', { params: { rol: 'ESTUDIANTE' } }).then(r => r.data.results || r.data),
@@ -41,7 +44,10 @@ export default function MatriculasList() {
       setEstudiantes(est.filter(u => u.rol === 'ESTUDIANTE'))
       setCarreras(carr)
       setCiclos(cic)
-    }).catch(() => addToast('Error al cargar datos', 'error')).finally(() => setLoading(false))
+    }).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+      else addToast('Error al cargar datos', 'error')
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -105,6 +111,7 @@ export default function MatriculasList() {
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="academico" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-red/10 flex items-center justify-center">
           <ScrollText size={20} className="text-unl-red" />

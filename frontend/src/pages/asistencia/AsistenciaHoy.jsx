@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { Camera, CheckCircle2, Clock, MapPin, X, AlertCircle, Loader2 } from 'lucide-react'
 
 const estadoColors = {
@@ -146,10 +147,12 @@ export default function AsistenciaHoy() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [camera, setCamera] = useState(null)
+  const [academicoDown, setAcademicoDown] = useState(false)
 
   const load = useCallback(() => {
     setLoading(true)
     setError('')
+    setAcademicoDown(false)
     api.get('/academico/matriculas/mis_materias/')
       .then(({ data }) => {
         if (data.tiene_registro_facial === false) {
@@ -159,7 +162,9 @@ export default function AsistenciaHoy() {
         setMatriculas(Array.isArray(data.matriculas) ? data.matriculas : [])
       })
       .catch(err => {
-        if (err.response?.status === 404) {
+        if (!err.response || err.response.status >= 500) {
+          setAcademicoDown(true)
+        } else if (err.response?.status === 404) {
           setError('No tienes una matrícula activa')
         } else {
           setError('Error al cargar tus materias')
@@ -199,6 +204,10 @@ export default function AsistenciaHoy() {
         <div className="w-8 h-8 border-2 border-unl-red border-t-transparent rounded-full animate-spin" />
       </div>
     )
+  }
+
+  if (academicoDown) {
+    return <MaintenanceBanner service="academico" />
   }
 
   if (error) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { BookOpen } from 'lucide-react'
@@ -24,6 +25,7 @@ export default function MateriasList() {
   const [ciclos, setCiclos] = useState([])
   const [docentes, setDocentes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
   const [modal, setModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -31,6 +33,7 @@ export default function MateriasList() {
 
   const load = () => {
     setLoading(true)
+    setServiceDown(false)
     Promise.all([
       api.get('/academico/materias/').then(r => r.data.results || r.data),
       api.get('/academico/carreras/').then(r => r.data.results || r.data),
@@ -38,7 +41,10 @@ export default function MateriasList() {
       api.get('/usuario/usuarios/', { params: { rol: 'DOCENTE' } }).then(r => r.data.results || r.data),
     ]).then(([mats, carr, cic, docs]) => {
       setData(mats); setCarreras(carr); setCiclos(cic); setDocentes(docs)
-    }).catch(() => addToast('Error al cargar datos', 'error')).finally(() => setLoading(false))
+    }).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+      else addToast('Error al cargar datos', 'error')
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -91,6 +97,7 @@ export default function MateriasList() {
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="academico" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-green/10 flex items-center justify-center">
           <BookOpen size={20} className="text-unl-green" />

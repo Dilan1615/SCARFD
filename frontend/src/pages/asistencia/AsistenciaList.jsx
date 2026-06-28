@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { CalendarCheck } from 'lucide-react'
 
 const estadoColors = {
@@ -29,16 +30,21 @@ const columns = [
 export default function AsistenciaList() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
 
   const load = () => {
     setLoading(true)
-    api.get('/asistencia/asistencias/').then(({ data: res }) => setData(res.results || res)).finally(() => setLoading(false))
+    setServiceDown(false)
+    api.get('/asistencia/asistencias/').then(({ data: res }) => setData(res.results || res)).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="asistencia" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-red/10 flex items-center justify-center">
           <CalendarCheck size={20} className="text-unl-red" />

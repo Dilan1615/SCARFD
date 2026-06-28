@@ -1,4 +1,5 @@
 import re
+from django.conf import settings
 from rest_framework import serializers
 from .models import Usuario
 
@@ -14,10 +15,23 @@ def validar_password_segura(value):
         raise serializers.ValidationError('. '.join(errors))
 
 class UsuarioSerializer(serializers.ModelSerializer):
+    foto_referencia_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Usuario
         fields = ['id', 'email', 'first_name', 'last_name', 'cedula', 'telefono', 'rol', 'foto_referencia_url', 'is_active']
         read_only_fields = ['id', 'is_active']
+
+    def get_foto_referencia_url(self, obj):
+        val = obj.foto_referencia_url
+        if not val:
+            return None
+        if val.startswith('http'):
+            return val
+        request = self.context.get('request')
+        if request:
+            return request.build_absolute_uri('/' + settings.MEDIA_URL + val)
+        return '/' + settings.MEDIA_URL + val
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from .models import Carrera, Ciclo, Materia, Horario, Matricula
-from apps.usuario.models import Usuario
+from shared.models import Usuario
 from datetime import datetime
+
 
 class CarreraSerializer(serializers.ModelSerializer):
     modalidad_display = serializers.SerializerMethodField()
@@ -13,6 +14,7 @@ class CarreraSerializer(serializers.ModelSerializer):
 
     def get_modalidad_display(self, obj):
         return obj.get_modalidad_display()
+
 
 class CicloSerializer(serializers.ModelSerializer):
     estado_display = serializers.SerializerMethodField()
@@ -41,6 +43,7 @@ class CicloSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('La fecha de fin debe ser posterior a la fecha de inicio')
         return data
 
+
 class MateriaSerializer(serializers.ModelSerializer):
     carrera_nombre = serializers.SerializerMethodField()
     ciclo_info = serializers.SerializerMethodField()
@@ -58,9 +61,14 @@ class MateriaSerializer(serializers.ModelSerializer):
         return f"Ciclo {obj.ciclo.num}"
 
     def get_docente_nombre(self, obj):
-        if obj.docente:
-            return f"{obj.docente.first_name} {obj.docente.last_name}"
+        if obj.docente_id:
+            try:
+                user = Usuario.objects.get(id=obj.docente_id)
+                return f"{user.first_name} {user.last_name}"
+            except Usuario.DoesNotExist:
+                return None
         return None
+
 
 class HorarioSerializer(serializers.ModelSerializer):
     dia_display = serializers.SerializerMethodField()
@@ -82,6 +90,7 @@ class HorarioSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('La hora de fin debe ser posterior a la hora de inicio')
         return data
 
+
 class MatriculaSerializer(serializers.ModelSerializer):
     estudiante_nombre = serializers.SerializerMethodField()
     carrera_nombre = serializers.SerializerMethodField()
@@ -94,7 +103,11 @@ class MatriculaSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'fecha_matricula']
 
     def get_estudiante_nombre(self, obj):
-        return f"{obj.estudiante.first_name} {obj.estudiante.last_name}"
+        try:
+            user = Usuario.objects.get(id=obj.estudiante_id)
+            return f"{user.first_name} {user.last_name}"
+        except Usuario.DoesNotExist:
+            return None
 
     def get_carrera_nombre(self, obj):
         return obj.carrera.nombre
@@ -104,6 +117,7 @@ class MatriculaSerializer(serializers.ModelSerializer):
 
     def get_estado_display(self, obj):
         return obj.get_estado_display()
+
 
 class HorarioConAsistenciaSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -117,12 +131,14 @@ class HorarioConAsistenciaSerializer(serializers.Serializer):
     asistencia_id = serializers.IntegerField(allow_null=True)
     estado_asistencia = serializers.CharField(allow_null=True)
 
+
 class MateriaConHorariosSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     codigo = serializers.CharField()
     nombre = serializers.CharField()
     docente_nombre = serializers.CharField(allow_null=True)
     horarios_hoy = serializers.ListField(child=HorarioConAsistenciaSerializer())
+
 
 class MisMateriasSerializer(serializers.Serializer):
     matricula_id = serializers.IntegerField()

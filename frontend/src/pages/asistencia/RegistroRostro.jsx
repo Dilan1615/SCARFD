@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Camera, CheckCircle2, X, Loader2, AlertCircle, ScanFace } from 'lucide-react'
@@ -18,15 +19,19 @@ export default function RegistroRostro() {
   const [success, setSuccess] = useState(false)
   const [yaTieneRostro, setYaTieneRostro] = useState(false)
   const [checking, setChecking] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
 
   useEffect(() => {
+    setServiceDown(false)
     api.get('/asistencia/registro-facial/')
       .then(({ data }) => {
         if (data.length > 0) {
           setYaTieneRostro(true)
         }
       })
-      .catch(() => {})
+      .catch((err) => {
+        if (!err.response || err.response.status >= 500) setServiceDown(true)
+      })
       .finally(() => setChecking(false))
   }, [])
 
@@ -78,7 +83,11 @@ export default function RegistroRostro() {
       setSuccess(true)
       addToast('Rostro registrado exitosamente')
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el rostro')
+      if (!err.response || err.response.status >= 500) {
+        setServiceDown(true)
+      } else {
+        setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el rostro')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -90,6 +99,10 @@ export default function RegistroRostro() {
         <div className="w-8 h-8 border-2 border-unl-red border-t-transparent rounded-full animate-spin" />
       </div>
     )
+  }
+
+  if (serviceDown) {
+    return <MaintenanceBanner service="asistencia" />
   }
 
   if (yaTieneRostro) {

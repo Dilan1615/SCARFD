@@ -9,8 +9,8 @@ from .serializers import (
     CarreraSerializer, CicloSerializer, MateriaSerializer,
     HorarioSerializer, MatriculaSerializer, MisMateriasSerializer
 )
-from apps.usuario.permissions import IsAdminForMutation
-from apps.asistencia.models import Asistencia, RegistroFacial
+from shared.permissions import IsAdminForMutation
+from shared.models import Usuario, AsistenciaModel, RegistroFacialModel
 
 
 class CarreraViewSet(viewsets.ModelViewSet):
@@ -33,7 +33,7 @@ class MateriaViewSet(viewsets.ModelViewSet):
     serializer_class = MateriaSerializer
     permission_classes = [IsAdminForMutation]
     search_fields = ['nombre', 'codigo']
-    filterset_fields = ['carrera', 'ciclo', 'docente']
+    filterset_fields = ['carrera', 'ciclo', 'docente_id']
 
 
 class HorarioViewSet(viewsets.ModelViewSet):
@@ -47,20 +47,19 @@ class MatriculaViewSet(viewsets.ModelViewSet):
     queryset = Matricula.objects.all()
     serializer_class = MatriculaSerializer
     permission_classes = [IsAdminForMutation]
-    filterset_fields = ['estudiante', 'carrera', 'ciclo', 'estado']
+    filterset_fields = ['estudiante_id', 'carrera', 'ciclo', 'estado']
 
     def get_queryset(self):
-        return Matricula.objects.select_related('estudiante', 'carrera', 'ciclo')
+        return Matricula.objects.select_related('carrera', 'ciclo')
 
     @action(detail=False, methods=['get'])
     def mis_materias(self, request):
-        """Devuelve las materias con horarios de hoy del estudiante autenticado"""
         if request.user.rol != 'ESTUDIANTE':
             return Response({'error': 'Solo estudiantes pueden ver sus materias'},
                           status=status.HTTP_403_FORBIDDEN)
 
         matriculas = Matricula.objects.filter(
-            estudiante=request.user,
+            estudiante_id=request.user.id,
             estado='ACTIVA'
         ).select_related('carrera', 'ciclo')
 
@@ -77,7 +76,7 @@ class MatriculaViewSet(viewsets.ModelViewSet):
 
         resultado = []
         for mat in matriculas:
-            materias = mat.ciclo.materias.select_related('docente').prefetch_related(
+            materias = mat.ciclo.materias.prefetch_related(
                 Prefetch('horarios', queryset=Horario.objects.filter(dia_semana=dia_hoy))
             )
 
@@ -89,11 +88,19 @@ class MatriculaViewSet(viewsets.ModelViewSet):
 
                 horarios_data = []
                 for horario in horarios_hoy:
-                    ya_registro = Asistencia.objects.filter(
-                        estudiante=request.user,
-                        horario=horario,
+                    ya_registro = AsistenciaModel.objects.filter(
+                        estudiante_id=request.user.id,
+                        horario_id=horario.id,
                         fecha=fecha_hoy
                     ).first()
+
+                    doc_nombre = None
+                    if materia.docente_id:
+                        try:
+                            doc = Usuario.objects.get(id=materia.docente_id)
+                            doc_nombre = f"{doc.first_name} {doc.last_name}"
+                        except Usuario.DoesNotExist:
+                            pass
 
                     horarios_data.append({
                         'id': horario.id,
@@ -112,7 +119,7 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                     'id': materia.id,
                     'codigo': materia.codigo,
                     'nombre': materia.nombre,
-                    'docente_nombre': f"{materia.docente.first_name} {materia.docente.last_name}" if materia.docente else None,
+                    'docente_nombre': doc_nombre,
                     'horarios_hoy': horarios_data,
                 })
 
@@ -123,8 +130,8 @@ class MatriculaViewSet(viewsets.ModelViewSet):
                 'materias': materias_data,
             })
 
-        tiene_rostro = RegistroFacial.objects.filter(
-            estudiante=request.user, estado='ACTIVO'
+        tiene_rostro = RegistroFacialModel.objects.filter(
+            estudiante_id=request.user.id, estado='ACTIVO'
         ).exists()
 
         serializer = MisMateriasSerializer(resultado, many=True)

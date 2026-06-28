@@ -1,10 +1,12 @@
+import io
 import os
 import threading
 import uuid
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from rest_framework import viewsets, status, permissions
+from PIL import Image
+from rest_framework import viewsets, status, permissions, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth import update_session_auth_hash
@@ -38,14 +40,31 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         instance.is_active = False
         instance.save()
 
+    ALLOWED_IMAGE_TYPES = {
+        'image/jpeg': '.jpg', 'image/png': '.png',
+        'image/webp': '.webp', 'image/gif': '.gif',
+    }
+
     def _handle_foto_upload(self, request):
-        if 'foto' in request.FILES:
-            foto_file = request.FILES['foto']
-            ext = os.path.splitext(foto_file.name)[1] or '.jpg'
-            filename = f'fotos/{uuid.uuid4()}{ext}'
-            path = default_storage.save(filename, ContentFile(foto_file.read()))
-            return request.build_absolute_uri(settings.MEDIA_URL + path)
-        return None
+        if 'foto' not in request.FILES:
+            return None
+        foto_file = request.FILES['foto']
+
+        content_type = foto_file.content_type or ''
+        if content_type not in self.ALLOWED_IMAGE_TYPES:
+            raise serializers.ValidationError(
+                'Formato de imagen no soportado. Use JPG, PNG, WEBP o GIF.'
+            )
+
+        image = Image.open(foto_file)
+        if image.mode in ('RGBA', 'LA', 'P'):
+            image = image.convert('RGB')
+
+        filename = f'fotos/{uuid.uuid4()}.jpg'
+        buf = io.BytesIO()
+        image.save(buf, format='JPEG', quality=85)
+        buf.seek(0)
+        return default_storage.save(filename, ContentFile(buf.read()))
 
     def perform_update(self, serializer):
         foto_url = self._handle_foto_upload(self.request)

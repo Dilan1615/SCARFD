@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { GraduationCap } from 'lucide-react'
@@ -33,6 +34,7 @@ export default function CarrerasList() {
   const { addToast } = useToast()
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
   const [modal, setModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -40,7 +42,11 @@ export default function CarrerasList() {
 
   const load = () => {
     setLoading(true)
-    api.get('/academico/carreras/').then(({ data: res }) => setData(res.results || res)).catch(() => addToast('Error al cargar carreras', 'error')).finally(() => setLoading(false))
+    setServiceDown(false)
+    api.get('/academico/carreras/').then(({ data: res }) => setData(res.results || res)).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+      else addToast('Error al cargar carreras', 'error')
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -76,6 +82,7 @@ export default function CarrerasList() {
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="academico" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-red/10 flex items-center justify-center">
           <GraduationCap size={20} className="text-unl-red" />

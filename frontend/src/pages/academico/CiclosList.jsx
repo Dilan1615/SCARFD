@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
+import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../contexts/ToastContext'
 import { Layers } from 'lucide-react'
@@ -22,6 +23,7 @@ export default function CiclosList() {
   const [data, setData] = useState([])
   const [carreras, setCarreras] = useState([])
   const [loading, setLoading] = useState(true)
+  const [serviceDown, setServiceDown] = useState(false)
   const [modal, setModal] = useState(false)
   const [editItem, setEditItem] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -29,13 +31,17 @@ export default function CiclosList() {
 
   const load = () => {
     setLoading(true)
+    setServiceDown(false)
     Promise.all([
       api.get('/academico/ciclos/').then(r => r.data.results || r.data),
       api.get('/academico/carreras/').then(r => r.data.results || r.data),
     ]).then(([ciclos, carr]) => {
       setData(ciclos)
       setCarreras(carr)
-    }).catch(() => addToast('Error al cargar datos', 'error')).finally(() => setLoading(false))
+    }).catch((err) => {
+      if (!err.response || err.response.status >= 500) setServiceDown(true)
+      else addToast('Error al cargar datos', 'error')
+    }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
@@ -88,6 +94,7 @@ export default function CiclosList() {
 
   return (
     <div className="space-y-5">
+      {serviceDown && <MaintenanceBanner service="academico" />}
       <div className="flex items-center gap-4">
         <div className="w-10 h-10 rounded-2xl bg-unl-green/10 flex items-center justify-center">
           <Layers size={20} className="text-unl-green" />
