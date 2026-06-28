@@ -23,8 +23,8 @@ export default function Login() {
     try {
       await login(email, password)
       window.location.href = '/'
-    } catch {
-      setError('Credenciales inválidas. Intente nuevamente.')
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Credenciales inválidas. Intente nuevamente.')
     } finally {
       setLoading(false)
     }

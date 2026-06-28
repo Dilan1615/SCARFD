@@ -1,5 +1,7 @@
 import boto3
+import base64
 import os
+import re
 from django.conf import settings
 from PIL import Image
 import io
@@ -22,6 +24,17 @@ class AwsRekognitionService:
         )
         self.bucket_name = os.getenv('AWS_S3_BUCKET', 'sacarf-images') # Se obtiene el nombre del bucket de S3 desde las variables de entorno, con un valor por defecto de 'sacarf-images'
         self.collection_id = os.getenv('REKOGNITION_COLLECTION_ID', 'sacarf_faces') # Se define el ID de la colección de rostros en Rekognition, que se utilizará para almacenar y buscar rostros
+
+    def decode_base64_image(self, base64_str):
+        """Decodifica una cadena base64 a bytes"""
+        if not base64_str:
+            raise ValueError("La cadena base64 no puede estar vacía")
+        try:
+            if ',' in base64_str:
+                base64_str = re.sub(r'^data:image/\w+;base64,', '', base64_str)
+            return base64.b64decode(base64_str)
+        except Exception:
+            raise ValueError("Formato de imagen inválido")
 
     def crear_collection(self):
         """Crea la colección de faces en AWS Rekognition si no existe"""

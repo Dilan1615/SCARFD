@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth.base_user import BaseUserManager
@@ -60,6 +61,8 @@ class Usuario(AbstractUser):
     )
 
     foto_referencia_url = models.URLField(blank=True, null=True)
+    intentos_fallidos = models.PositiveIntegerField(default=0)
+    bloqueado_hasta = models.DateTimeField(null=True, blank=True)
 
     # Manager personalizado
     objects = UsuarioManager()
@@ -72,6 +75,15 @@ class Usuario(AbstractUser):
 
     class Meta:
         db_table = "usuario"
+
+    def esta_bloqueado(self):
+        if self.bloqueado_hasta and timezone.now() < self.bloqueado_hasta:
+            return True
+        if self.intentos_fallidos >= 5:
+            self.bloqueado_hasta = timezone.now() + timedelta(minutes=30)
+            self.save()
+            return True
+        return False
 
     def __str__(self):
         return f"{self.email} - {self.get_rol_display()}"

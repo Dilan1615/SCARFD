@@ -16,9 +16,22 @@ export default function RegistroRostro() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [yaTieneRostro, setYaTieneRostro] = useState(false)
+  const [checking, setChecking] = useState(true)
 
   useEffect(() => {
-    if (success) return
+    api.get('/asistencia/registro-facial/')
+      .then(({ data }) => {
+        if (data.length > 0) {
+          setYaTieneRostro(true)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setChecking(false))
+  }, [])
+
+  useEffect(() => {
+    if (success || yaTieneRostro || checking) return
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } })
       .then(s => {
         setStream(s)
@@ -69,6 +82,47 @@ export default function RegistroRostro() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (checking) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-2 border-unl-red border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (yaTieneRostro) {
+    return (
+      <div className="max-w-lg mx-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+          <ScanFace size={48} className="mx-auto text-green-500 mb-4" />
+          <h2 className="text-xl font-bold text-unl-black mb-2">Rostro ya registrado</h2>
+          <p className="text-gray-500 mb-6">Ya tienes un rostro registrado. Puedes actualizarlo si lo deseas, pero el registro excesivo puede resultar en la desactivación de tu cuenta.</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
+            <button
+              onClick={() => setYaTieneRostro(false)}
+              className="bg-unl-red hover:bg-unl-red-dark text-white px-6 py-2.5 rounded-xl font-medium transition-all shadow-sm hover:shadow-md"
+            >
+              Actualizar Rostro
+            </button>
+            <button
+              onClick={() => navigate('/asistencia/hoy')}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-medium transition-all"
+            >
+              Ir a mi asistencia
+            </button>
+          </div>
+        </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3 mt-4">
+          <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-800">
+            <strong className="block mb-1">Importante:</strong>
+            Registrar el rostro repetidamente está penado. Si se detectan múltiples registros innecesarios, tu cuenta será desactivada automáticamente.
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (success) {

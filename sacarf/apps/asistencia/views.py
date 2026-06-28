@@ -223,6 +223,12 @@ class RegistroFacialViewSet(viewsets.ModelViewSet):
     queryset = RegistroFacial.objects.all()
     serializer_class = RegistroFacialSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.rol == 'ESTUDIANTE':
+            return self.queryset.filter(estudiante=user)
+        return self.queryset
     
     @action(detail=False, methods=['post'])
     def registrar_rostro(self, request):
@@ -249,7 +255,7 @@ class RegistroFacialViewSet(viewsets.ModelViewSet):
             return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
         # Indexar rostro en AWS
-        resultado = aws_service.indexar_rostro(image_bytes, request.user.id)
+        resultado = aws_service.indexar_rostro(image_bytes, str(request.user.id))
         
         if not resultado:
             return Response({

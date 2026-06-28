@@ -228,7 +228,14 @@ export default function AsistenciaHoy() {
             <p className="text-sm text-gray-500">{mat.ciclo}</p>
           </div>
 
-          <div className="space-y-3">
+          {mat.materias.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
+              <Clock size={32} className="mx-auto text-gray-300 mb-2" />
+              <p className="text-gray-500 font-medium">No hay clases programadas para hoy</p>
+              <p className="text-xs text-gray-400 mt-1">Hoy es {new Date().toLocaleDateString('es-EC', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
             {mat.materias.map((materia) => (
               <div key={materia.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-5 py-3.5 bg-gray-50 border-b border-gray-100">
@@ -285,7 +292,8 @@ export default function AsistenciaHoy() {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       ))}
 
