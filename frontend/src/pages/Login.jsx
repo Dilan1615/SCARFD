@@ -10,6 +10,7 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [intentos, setIntentos] = useState(null)
   const [showContent, setShowContent] = useState(false)
 
   useEffect(() => {
@@ -19,12 +20,17 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setIntentos(null)
     setLoading(true)
     try {
       await login(email, password)
       window.location.href = '/'
     } catch (err) {
-      setError(err.response?.data?.detail || 'Credenciales inválidas. Intente nuevamente.')
+      const data = err.response?.data || {}
+      setError(data.detail || 'Credenciales inválidas. Intente nuevamente.')
+      if (data.intentos_restantes !== undefined) {
+        setIntentos(data.intentos_restantes)
+      }
     } finally {
       setLoading(false)
     }
@@ -83,9 +89,17 @@ export default function Login() {
               </div>
 
               {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4 flex items-center gap-2.5">
-                  <AlertCircle size={16} className="shrink-0" />
-                  {error}
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <AlertCircle size={16} className="shrink-0" />
+                    {error}
+                  </div>
+                  {intentos !== null && intentos > 0 && (
+                    <div className="mt-2 flex items-center gap-2 text-amber-700 text-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                      Intentos restantes: {intentos}
+                    </div>
+                  )}
                 </div>
               )}
 
