@@ -1,0 +1,1 @@
+[{"name":"gateway","image":"521803510678.dkr.ecr.us-east-2.amazonaws.com/sacarf-gateway:v6","portMappings":[{"containerPort":80,"protocol":"tcp"}],"logConfiguration":{"logDriver":"awslogs","options":{"awslogs-group":"/ecs/sacarf-gateway","awslogs-region":"us-east-2","awslogs-stream-prefix":"ecs"}}}]

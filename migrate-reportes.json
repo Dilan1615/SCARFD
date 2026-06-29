@@ -1,0 +1,1 @@
+{"containerOverrides":[{"name":"reportes","command":["python","services/reportes/manage.py","migrate"]}]}

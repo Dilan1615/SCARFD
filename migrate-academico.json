@@ -1,0 +1,1 @@
+{"containerOverrides":[{"name":"academico","command":["python","services/academico/manage.py","migrate"]}]}
