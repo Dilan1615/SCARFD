@@ -28,7 +28,11 @@ def login_view(request):
         tiempo_restante = user.bloqueado_hasta - timezone.now() if user.bloqueado_hasta else timedelta(minutes=30)
         minutos = int(tiempo_restante.total_seconds() // 60)
         return Response(
-            {'detail': f'Cuenta bloqueada por múltiples intentos fallidos. Intenta de nuevo en {minutos} minuto(s).'},
+            {
+                'detail': f'Cuenta bloqueada por múltiples intentos fallidos. Intenta de nuevo en {minutos} minuto(s).',
+                'intentos_restantes': 0,
+                'bloqueado': True,
+            },
             status=status.HTTP_401_UNAUTHORIZED
         )
 
@@ -38,15 +42,26 @@ def login_view(request):
     except Exception:
         user.intentos_fallidos += 1
         user.save()
+
+        intentos_restantes = max(0, 5 - user.intentos_fallidos)
+
         if user.intentos_fallidos >= 5:
             user.bloqueado_hasta = timezone.now() + timedelta(minutes=30)
             user.save()
             return Response(
-                {'detail': 'Cuenta bloqueada por múltiples intentos fallidos. Intenta de nuevo en 30 minutos.'},
+                {
+                    'detail': 'Cuenta bloqueada por múltiples intentos fallidos. Intenta de nuevo en 30 minutos.',
+                    'intentos_restantes': 0,
+                    'bloqueado': True,
+                },
                 status=status.HTTP_401_UNAUTHORIZED
             )
         return Response(
-            {'detail': 'Credenciales inválidas'},
+            {
+                'detail': f'Credenciales inválidas. Te quedan {intentos_restantes} intento(s).',
+                'intentos_restantes': intentos_restantes,
+                'bloqueado': False,
+            },
             status=status.HTTP_401_UNAUTHORIZED
         )
 
