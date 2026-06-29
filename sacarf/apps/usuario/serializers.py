@@ -65,9 +65,9 @@ class SolicitarRestablecimientoSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if Usuario.objects.filter(email=value.lower()).exists():
-            raise serializers.ValidationError("Este correo ya esta registrado")
-        return 
+        if not Usuario.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Este correo no está registrado")
+        return value.lower() 
 
 class RestablecerPasswordSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)
