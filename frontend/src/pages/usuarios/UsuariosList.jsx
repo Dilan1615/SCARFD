@@ -93,7 +93,8 @@ export default function UsuariosList() {
       setEditItem(null)
       load()
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.username?.[0] || err.response?.data?.email?.[0] || err.response?.data?.non_field_errors?.[0] || 'Error al guardar el usuario'
+      const data = err.response?.data || {}
+      const msg = data.error || data.password?.[0] || data.email?.[0] || data.cedula?.[0] || data.first_name?.[0] || data.last_name?.[0] || data.non_field_errors?.[0] || 'Error al guardar el usuario'
       addToast(msg, 'error')
     } finally {
       setSubmitting(false)

@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { X, Shield, ShieldAlert, ShieldCheck } from 'lucide-react'
 
 export default function FormModal({ open, onClose, title, fields, initialData, onSubmit, loading }) {
   const [form, setForm] = useState({})
@@ -24,6 +24,23 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
   const handleSubmit = (e) => {
     e.preventDefault()
     onSubmit(form)
+  }
+
+  const getPasswordStrength = (password) => {
+    let score = 0
+    if (password.length >= 8) score += 25
+    if (password.length >= 12) score += 10
+    if (/[A-Z]/.test(password)) score += 20
+    if (/[0-9]/.test(password)) score += 20
+    if (/[^A-Za-z0-9]/.test(password)) score += 25
+    return Math.min(score, 100)
+  }
+
+  const strengthLabel = (score) => {
+    if (score < 25) return { label: 'Muy débil', color: 'bg-red-500', text: 'text-red-600', icon: ShieldAlert }
+    if (score < 50) return { label: 'Débil', color: 'bg-orange-500', text: 'text-orange-600', icon: ShieldAlert }
+    if (score < 75) return { label: 'Media', color: 'bg-yellow-500', text: 'text-yellow-600', icon: Shield }
+    return { label: 'Segura', color: 'bg-green-500', text: 'text-green-600', icon: ShieldCheck }
   }
 
   if (!open) return null
@@ -92,6 +109,28 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
               {field.hint && (
                 <p className="text-xs text-gray-400 mt-1">{field.hint}</p>
               )}
+              {field.key === 'password' && form[field.key] && (() => {
+                const score = getPasswordStrength(form[field.key])
+                const { label, color, text, icon: Icon } = strengthLabel(score)
+                return (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex gap-1">
+                      {[1,2,3,4].map((i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                            score >= i * 25 ? color : 'bg-gray-200'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <div className={`flex items-center gap-1 text-xs ${text}`}>
+                      <Icon size={12} />
+                      <span>{label}</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           ))}
 

@@ -28,9 +28,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
             return None
         if val.startswith('http'):
             return val
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri('/' + settings.MEDIA_URL + val)
         return '/' + settings.MEDIA_URL + val
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -65,9 +62,9 @@ class SolicitarRestablecimientoSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
     def validate_email(self, value):
-        if Usuario.objects.filter(email=value.lower()).exists():
-            raise serializers.ValidationError("Este correo ya esta registrado")
-        return 
+        if not Usuario.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError("Este correo no está registrado")
+        return value.lower()
 
 class RestablecerPasswordSerializer(serializers.Serializer):
     token = serializers.CharField(required=True)

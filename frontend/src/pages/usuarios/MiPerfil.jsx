@@ -54,7 +54,8 @@ export default function MiPerfil() {
       addToast('Perfil actualizado exitosamente')
       await refreshUser()
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.cedula?.[0] || 'Error al actualizar el perfil'
+      const data = err.response?.data || {}
+      const msg = data.error || data.cedula?.[0] || data.first_name?.[0] || data.last_name?.[0] || data.email?.[0] || data.non_field_errors?.[0] || 'Error al actualizar el perfil'
       addToast(msg, 'error')
     } finally {
       setLoading(false)
