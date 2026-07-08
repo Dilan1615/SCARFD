@@ -35,19 +35,8 @@ THIRD_PARTY_APPS = [
     'drf_yasg',
 ]
 
-if SERVICE_NAME in ('all', 'init', 'usuario'):
-    OWN_APPS = ['apps.usuario']
-elif SERVICE_NAME == 'academico':
-    OWN_APPS = ['shared', 'apps.academico']
-elif SERVICE_NAME == 'asistencia':
-    OWN_APPS = ['shared', 'apps.asistencia']
-elif SERVICE_NAME == 'reportes':
-    OWN_APPS = ['shared', 'apps.reportes']
-else:
-    OWN_APPS = ['apps.usuario', 'apps.academico', 'apps.asistencia', 'apps.reportes']
 
-if SERVICE_NAME in ('all', 'init'):
-    OWN_APPS = ['apps.usuario', 'apps.academico', 'apps.asistencia', 'apps.reportes']
+OWN_APPS = ['apps.usuario']
 
 INSTALLED_APPS = BASE_APPS + THIRD_PARTY_APPS + OWN_APPS
 
