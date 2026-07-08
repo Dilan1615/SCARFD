@@ -65,60 +65,6 @@ services:
     networks:
       - sacarf_network
 
-  academico-service:
-    build: .
-    container_name: sacarf_academico
-    volumes:
-      - ./:/app
-    ports:
-      - "8002:8002"
-    environment:
-      <<: *common_env
-      SERVICE_NAME: academico
-      SERVICE_PORT: 8002
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    networks:
-      - sacarf_network
-
-  asistencia-service:
-    build: .
-    container_name: sacarf_asistencia
-    volumes:
-      - ./:/app
-    ports:
-      - "8003:8003"
-    environment:
-      <<: *common_env
-      SERVICE_NAME: asistencia
-      SERVICE_PORT: 8003
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    networks:
-      - sacarf_network
-
-  reportes-service:
-    build: .
-    container_name: sacarf_reportes
-    volumes:
-      - ./:/app
-    ports:
-      - "8004:8004"
-    environment:
-      <<: *common_env
-      SERVICE_NAME: reportes
-      SERVICE_PORT: 8004
-    depends_on:
-      init:
-        condition: service_completed_successfully
-    restart: unless-stopped
-    networks:
-      - sacarf_network
-
   gateway:
     build: ./gateway
     container_name: sacarf_gateway
@@ -126,9 +72,6 @@ services:
       - "8000:80"
     depends_on:
       - usuario-service
-      - academico-service
-      - asistencia-service
-      - reportes-service
     networks:
       - sacarf_network
 

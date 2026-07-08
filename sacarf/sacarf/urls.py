@@ -28,21 +28,6 @@ if SERVICE_NAME in ('all', 'usuario'):
         path('api/usuario/', include('apps.usuario.urls')),
     ]
 
-if SERVICE_NAME in ('all', 'academico'):
-    urlpatterns += [
-        path('api/academico/', include('apps.academico.urls')),
-    ]
-
-if SERVICE_NAME in ('all', 'asistencia'):
-    urlpatterns += [
-        path('api/asistencia/', include('apps.asistencia.urls')),
-    ]
-
-if SERVICE_NAME in ('all', 'reportes'):
-    urlpatterns += [
-        path('api/reportes/', include('apps.reportes.urls')),
-    ]
-
 if SERVICE_NAME in ('all', 'usuario'):
     urlpatterns += [
         path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
