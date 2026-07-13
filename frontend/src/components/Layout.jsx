@@ -3,7 +3,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, CalendarCheck,
-  ClipboardList, LogOut, Menu, X, ChevronDown, User, ScanFace,
+  ClipboardList, LogOut, Menu, X, ChevronDown, User, ScanFace, Activity,
 } from 'lucide-react'
 
 function useNavItems() {
@@ -14,6 +14,7 @@ function useNavItems() {
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
     ...(isAdmin ? [{ to: '/usuarios', label: 'Usuarios', icon: Users }] : []),
     { to: '/perfil', label: 'Mi Perfil', icon: User },
+    ...(isAdmin ? [{ to: '/monitoring', label: 'Monitoreo', icon: Activity }] : []),
     ...(isAdmin || user?.rol === 'DOCENTE' ? [{
       to: '/academico', label: 'Académico', icon: GraduationCap, children: [
         { to: '/academico/carreras', label: 'Carreras' },
