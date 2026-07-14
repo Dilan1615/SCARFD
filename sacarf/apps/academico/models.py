@@ -96,15 +96,28 @@ class Horario(models.Model):
         return self.hora_inicio < self.hora_fin
 
     def clean(self):
-        if self.hora_inicio >= self.hora_fin:
+        hora_inicio = self._to_time(self.hora_inicio)
+        hora_fin = self._to_time(self.hora_fin)
+
+        if hora_inicio >= hora_fin:
             raise ValidationError("La hora de inicio debe ser menor que la hora de fin")
+
         overlapping = Horario.objects.filter(
             materia=self.materia,
             dia_semana=self.dia_semana
         ).exclude(id=self.id)
         for h in overlapping:
-            if not (self.hora_fin <= h.hora_inicio or self.hora_inicio >= h.hora_fin):
+            h_inicio = self._to_time(h.hora_inicio)
+            h_fin = self._to_time(h.hora_fin)
+            if not (hora_fin <= h_inicio or hora_inicio >= h_fin):
                 raise ValidationError("El horario se solapa con otro existente")
+
+    @staticmethod
+    def _to_time(value):
+        if isinstance(value, str):
+            from datetime import datetime
+            return datetime.strptime(value, "%H:%M").time()
+        return value
 
 
 class Matricula(models.Model):
