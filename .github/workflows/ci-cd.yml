@@ -1,0 +1,65 @@
+name: CI/CD SACARF
+
+on:
+  push:
+    branches:
+      - V1
+      - V2
+
+jobs:
+  test:
+    name: Tests unitarios
+    runs-on: ubuntu-latest
+    env:
+      DB_ENGINE: django.db.backends.sqlite3
+      DB_NAME: ":memory:"
+      SECRET_KEY: ci-test-secret-key
+      DEBUG: "True"
+      ALLOWED_HOSTS: "*"
+      SERVICE_NAME: all
+      FRONTEND_URL: http://localhost:5173
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Ejecutar pruebas unitarias
+        working-directory: ./sacarf
+        run: python manage.py test
+
+  deploy:
+    name: Deploy a EC2
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Definir host según la rama
+        id: vars
+        run: |
+          if [ "${{ github.ref_name }}" = "V1" ]; then
+            echo "host=${{ secrets.HOST_V1 }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "host=${{ secrets.HOST_V2 }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy por SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.vars.outputs.host }}
+          username: ubuntu
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /opt/app
+            git pull origin ${{ github.ref_name }}
+            docker compose up -d --build
+            docker compose restart gateway
