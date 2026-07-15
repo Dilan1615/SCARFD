@@ -2,7 +2,7 @@
 
 **Universidad Nacional de Loja**
 
-Sistema web para el registro de asistencia de estudiantes mediante reconocimiento facial, gestión académica (carreras, ciclos, materias, horarios, matrículas) y generación de reportes.
+Sistema web para el registro de asistencia de estudiantes mediante reconocimiento facial, gestión académica (carreras, ciclos, materias, horarios, matrículas), generación de reportes y monitoreo del sistema (CPU, RAM, disco, contenedores, base de datos, logs de auditoría).
 
 Arquitectura de **microservicios** con Django REST Framework, gateway Nginx y frontend React.
 
@@ -16,6 +16,7 @@ Arquitectura de **microservicios** con Django REST Framework, gateway Nginx y fr
   - [academico-service](#academico-service)
   - [asistencia-service](#asistencia-service)
   - [reportes-service](#reportes-service)
+  - [monitoring-service](#monitoring-service)
 - [Gateway (Nginx)](#gateway-nginx)
 - [Servicio init](#servicio-init)
 - [Estructura del Proyecto](#estructura-del-proyecto)
@@ -37,6 +38,7 @@ Arquitectura de **microservicios** con Django REST Framework, gateway Nginx y fr
 - [Variables de Entorno](#variables-de-entorno)
 - [API Endpoints](#api-endpoints)
 - [Flujo de Reconocimiento Facial](#flujo-de-reconocimiento-facial)
+- [Sistema de Auditoría](#sistema-de-auditoría)
 - [Documentación de la API](#documentación-de-la-api)
 
 ---
@@ -51,6 +53,7 @@ Arquitectura de **microservicios** con Django REST Framework, gateway Nginx y fr
 │  /api/academico/*   → upstream academico  :8002             │
 │  /api/asistencia/*  → upstream asistencia :8003             │
 │  /api/reportes/*    → upstream reportes   :8004             │
+│  /api/monitoring/*  → upstream monitoring :8005             │
 │  /admin/            → upstream usuario    :8001             │
 │  /swagger/, /redoc/ → upstream usuario    :8001             │
 └──────┬──────────────────────────────────────────────────────┘
@@ -64,19 +67,26 @@ Arquitectura de **microservicios** con Django REST Framework, gateway Nginx y fr
 │              Timeout Axios: 5 segundos                       │
 └─────────────────────────────────────────────────────────────┘
 
-┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
-│  usuario-svc   │  │ academico-svc  │  │ asistencia-svc │  │  reportes-svc  │
-│  Django :8001  │  │  Django :8002  │  │  Django :8003  │  │  Django :8004  │
-│                │  │                │  │                │  │                │
-│  /api/usuario/ │  │ /api/academico/│  │/api/asistencia/│  │ /api/reportes/ │
-└───────┬────────┘  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘
-        │                   │                   │                   │
-        └───────────────────┴───────────────────┴───────────────────┘
-                                    │
-                          ┌─────────▼──────────┐
-                          │   PostgreSQL 15     │
-                          │   (db :5432)        │
-                          └────────────────────┘
+┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
+│  usuario-svc   │  │ academico-svc  │  │ asistencia-svc │  │  reportes-svc  │  │ monitoring-svc │
+│  Django :8001  │  │  Django :8002  │  │  Django :8003  │  │  Django :8004  │  │  Django :8005  │
+│                │  │                │  │                │  │                │  │                │
+│  /api/usuario/ │  │ /api/academico/│  │/api/asistencia/│  │ /api/reportes/ │  │/api/monitoring/│
+└───────┬────────┘  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘  └───────┬────────┘
+        │                   │                   │                   │                   │
+        └───────────────────┴───────────────────┴───────────────────┴───────────────────┘
+                                        │
+                              ┌─────────▼──────────┐
+                              │   PostgreSQL 15     │
+                              │   (db :5432)        │
+                              └────────────────────┘
+                                        │
+                              ┌─────────▼──────────┐
+                              │  monitoring-svc     │
+                              │  ├─ psutil (CPU/RAM/disco)
+                              │  ├─ Docker SDK (contenedores)
+                              │  └─ psycopg2 (SQL directa)
+                              └────────────────────┘
 
                     ☁️ AWS Cloud
             ┌─────────────────────────┐
@@ -183,6 +193,36 @@ Cada microservicio es un proyecto Django independiente que comparte la misma bas
 
 **Responsabilidad:** Generación de reportes de asistencia en PDF (ReportLab) y Excel (openpyxl), filtrado por tipo, materia, estudiante o ciclo.
 
+### monitoring-service
+
+| Propiedad | Valor |
+|-----------|-------|
+| Puerto | 8005 |
+| Settings | `services/monitoring/monitoring/settings.py` |
+| URLConf | `services/monitoring/monitoring/urls.py` |
+
+**Apps cargadas:** `monitoring`, `shared`
+
+**Endpoints:**
+- `GET /api/monitoring/salud/` — Estado de cada microservicio (activo/caído + tiempo de respuesta)
+- `GET /api/monitoring/infraestructura/` — CPU, RAM, disco (psutil) y contenedores Docker (SDK)
+- `GET /api/monitoring/backend/` — Registros de auditoría recientes por servicio y acción
+- `GET /api/monitoring/base-datos/` — Conexiones activas, consultas/seg y almacenamiento PostgreSQL
+- `GET /api/monitoring/negocio/` — Indicadores de negocio: usuarios, asistencias, reconocimientos, reportes
+- `GET /api/monitoring/resumen/` — Todo el dashboard en una sola petición
+- `GET /api/monitoring/health/` — Self-check sin autenticación
+- `GET /api/monitoring/auditoria/` — Logs de actividad paginados y filtrables
+- `GET /api/monitoring/auditoria/resumen/` — Conteos de las últimas 24h por acción y servicio
+
+**Responsabilidad:** Dashboard de monitoreo centralizado. Reemplaza a prometheus + node-exporter + cadvisor + postgres-exporter con lectura directa del host:
+- **CPU / RAM / disco**: `psutil` (monta `/proc`, `/sys`, `/` del host en el contenedor)
+- **Contenedores Docker**: SDK oficial de Docker (monta `docker.sock`)
+- **PostgreSQL**: SQL directa vía `psycopg2`
+- **Salud de servicios**: HTTP ping a `/health/` de cada microservicio
+- **Logs de auditoría**: Tabla `monitoring_registroauditoria` compartida vía `shared.models.RegistroAuditoriaModel` (managed=False)
+
+Todos los microservicios escriben logs de auditoría a través de `shared.audit.registrar_auditoria()`, que inserta filas en la tabla centralizada sin necesidad de importar la app `monitoring`.
+
 ---
 
 ## Gateway (Nginx)
@@ -203,6 +243,7 @@ El gateway es un contenedor Nginx que actúa como punto de entrada único (`puer
 /api/academico/*   → http://academico-service:8002/api/academico/
 /api/asistencia/*  → http://asistencia-service:8003/api/asistencia/
 /api/reportes/*    → http://reportes-service:8004/api/reportes/
+/api/monitoring/*  → http://monitoring-service:8005/api/monitoring/
 /admin/*           → http://usuario-service:8001/admin/
 /swagger/*         → http://usuario-service:8001/swagger/
 /redoc/*           → http://usuario-service:8001/redoc/
@@ -216,8 +257,11 @@ El frontend solo conoce el gateway (`localhost:8000`) y nunca se comunica direct
 
 El contenedor `init` es un contenedor de una sola ejecución que corre antes que los servicios. Su responsabilidad es:
 1. Ejecutar `migrate` en todas las apps
-2. Crear el superusuario por defecto si no existe (`admin@sacarf.com` / `admin123`)
-3. Una vez completado, los servicios pueden iniciar
+2. En modo DEBUG: verificar y generar migraciones pendientes (`makemigrations --check`)
+3. Crear el superusuario por defecto si no existe (`admin@sacarf.com` / `admin123`)
+4. En producción: recolectar archivos estáticos (`collectstatic`)
+5. Verificar que la tabla `monitoring_registroauditoria` existe
+6. Una vez completado, los servicios pueden iniciar
 
 `depends_on:` en docker-compose usa `service_completed_successfully` para garantizar que `init` termine antes de arrancar los servicios.
 
@@ -238,7 +282,8 @@ sacarf/
 │   ├── usuario/                     # App de usuarios (código fuente)
 │   ├── academico/                   # App académico (código fuente)
 │   ├── asistencia/                  # App asistencia (código fuente)
-│   └── reportes/                    # App reportes (código fuente)
+│   ├── reportes/                    # App reportes (código fuente)
+│   └── monitoring/                  # App monitoreo (código fuente)
 │
 ├── shared/                          # Paquete de modelos compartidos (solo lectura)
 │   ├── __init__.py
@@ -271,12 +316,20 @@ sacarf/
 │   │       ├── urls.py              # Solo rutas de asistencia
 │   │       └── wsgi.py
 │   │
-│   └── reportes/
+│   ├── reportes/
+│   │   ├── manage.py
+│   │   └── reportes/
+│   │       ├── __init__.py
+│   │       ├── settings.py          # Solo app reportes + shared
+│   │       ├── urls.py              # Solo rutas de reportes
+│   │       └── wsgi.py
+│   │
+│   └── monitoring/
 │       ├── manage.py
-│       └── reportes/
+│       └── monitoring/
 │           ├── __init__.py
-│           ├── settings.py          # Solo app reportes + shared
-│           ├── urls.py              # Solo rutas de reportes
+│           ├── settings.py          # Solo app monitoring + shared
+│           ├── urls.py              # Rutas de monitoreo + auditoría
 │           └── wsgi.py
 │
 ├── gateway/
@@ -287,7 +340,7 @@ sacarf/
 │
 ├── Dockerfile                       # Dockerfile único para todos los servicios
 ├── entrypoint.sh                    # Script de entrada: init o servicio según SERVICE_NAME
-├── docker-compose.yml               # Orquestación: db, init, 4 servicios + gateway
+├── docker-compose.yml               # Orquestación: db, init, 5 servicios + gateway
 ├── manage.py                        # manage.py raíz (compatibilidad local)
 └── requirements.txt
 
@@ -305,6 +358,12 @@ frontend/
 │   │   ├── Layout.jsx
 │   │   ├── DataTable.jsx
 │   │   ├── FormModal.jsx
+│   │   ├── ServiceStatusCard.jsx    # Tarjeta de estado de servicio
+│   │   ├── MetricCard.jsx           # Tarjeta de métrica con barra de progreso
+│   │   ├── LineChart.jsx            # Gráfico de líneas (series temporales)
+│   │   ├── BarChart.jsx             # Gráfico de barras
+│   │   ├── AlertPanel.jsx           # Panel de alertas del dashboard
+│   │   ├── ActivityLogTable.jsx     # Tabla de logs de actividad
 │   │   └── MaintenanceBanner.jsx    # Banner "Servicio en mantenimiento"
 │   ├── pages/
 │   │   ├── Login.jsx
@@ -313,7 +372,10 @@ frontend/
 │   │   ├── usuarios/
 │   │   ├── academico/
 │   │   ├── asistencia/              # AsistenciaHoy.jsx con academicoDown
-│   │   └── reportes/
+│   │   ├── reportes/
+│   │   └── monitoring/
+│   │       ├── DashboardMonitoring.jsx  # Dashboard principal de monitoreo
+│   │       └── LogsActividad.jsx        # Logs de auditoría paginados
 │   └── index.html
 │
 ├── vite.config.js
@@ -339,6 +401,7 @@ El proyecto original era un monolito Django con 4 apps (`usuario`, `academico`, 
    - `academico-service`: `academico` + `shared`
    - `asistencia-service`: `asistencia` + `shared`
    - `reportes-service`: `reportes` + `shared`
+   - `monitoring-service`: `monitoring` + `shared`
 
 3. **Se creó `services/<nombre>/<nombre>/urls.py`** — Cada servicio expone solo su propio prefijo de API.
 
@@ -348,15 +411,16 @@ El proyecto original era un monolito Django con 4 apps (`usuario`, `academico`, 
 
 Dado que los microservicios necesitan leer modelos de otras apps (ej. `academico` necesita leer `Usuario`), pero no deben tener acceso de escritura a sus tablas, se creó el paquete `shared/`:
 
-- **`shared/models.py`** — Contiene modelos duplicados con `managed = False`, apuntando a las tablas existentes. Incluye `Usuario`, `CarreraModel`, `CicloModel`, `MateriaModel`, `HorarioModel`, `AsistenciaModel`, `JustificacionModel`, `RegistroFacialModel`, `ReporteModel`.
+- **`shared/models.py`** — Contiene modelos duplicados con `managed = False`, apuntando a las tablas existentes. Incluye `Usuario`, `CarreraModel`, `CicloModel`, `MateriaModel`, `HorarioModel`, `AsistenciaModel`, `JustificacionModel`, `RegistroFacialModel`, `ReporteModel`, `RegistroAuditoriaModel`.
 - **`shared/auth.py`** — Contiene `EmailOrUsernameModelBackend` y `CustomJWTAuthentication`, reutilizados por todos los servicios.
 - **`shared/permissions.py`** — Contiene `IsAdminForMutation`, reutilizado por todos los servicios.
+- **`shared/audit.py`** — Contiene `AuditoriaMixin` (para ViewSets) y `registrar_auditoria()` (llamadas explícitas). Los 4 microservicios escriben logs de auditoría a través de este módulo.
 
 Todas las **ForeignKey y OneToOneField** entre apps se refactorizaron a `IntegerField` para eliminar dependencias directas. Las consultas entre servicios se hacen mediante consultas directas a los modelos compartidos (misma base de datos).
 
 ### Migraciones
 
-Cada servicio usa `MigrationModules` para que las migraciones de todas las apps sigan residiendo en `sacarf/apps/<nombre>/migrations/`, evitando duplicación. El contenedor `init` ejecuta `migrate` para todas las apps.
+Cada servicio usa `MigrationModules` para que las migraciones de todas las apps sigan residiendo en `sacarf/apps/<nombre>/migrations/`, evitando duplicación. El contenedor `init` ejecuta `migrate` para todas las apps. La tabla `monitoring_registroauditoria` es dueña real de monitoring-service, pero los demás servicios la escriben vía `shared.models.RegistroAuditoriaModel` (managed=False).
 
 ### Frontend y Detección de Servicio Caído
 
@@ -406,9 +470,12 @@ docker-compose ps
 #    Swagger:  http://localhost:8000/swagger/
 ```
 
-> **Nota**: El `entrypoint.sh` ejecuta migraciones automáticamente y crea un superusuario por defecto:
+> **Nota**: El `entrypoint.sh` ejecuta migraciones automáticamente, crea un superusuario por defecto:
 > - **Email**: admin@sacarf.com
 > - **Password**: admin123
+>
+> En modo DEBUG, verifica migraciones pendientes con `makemigrations --check`.
+> En producción, ejecuta `collectstatic` y omite `makemigrations`.
 
 ### Desarrollo Local (sin Docker)
 
@@ -465,6 +532,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/usuario/usuario
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/academico/carreras/
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/asistencia/asistencias/
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/reportes/reportes/
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/monitoring/health/
 
 # Login como admin
 curl -X POST http://localhost:8000/api/usuario/token/ \
@@ -545,6 +613,9 @@ npm run build
 | Backend | openpyxl (Excel) | 3.1.2 |
 | Backend | Pillow (imágenes) | 10.4.0 |
 | Backend | drf-yasg (Swagger) | 1.21.7 |
+| Backend | psutil (métricas host) | 6.1.1 |
+| Backend | docker (SDK Docker) | 7.1.0 |
+| Backend | psycopg2 (SQL directa) | 2.9.9 |
 | Base de datos | PostgreSQL | 15 |
 | Infraestructura | Docker / docker-compose | — |
 | Gateway | Nginx | latest |
@@ -586,6 +657,9 @@ PASSWORD_RESET_TIMEOUT=1800
 
 # ─── Frontend ───────────────────────────────────────────
 FRONTEND_URL=http://localhost:5173
+
+# ─── Monitoreo ─────────────────────────────────────────
+MONITORING_HEALTHCHECK_TIMEOUT=3
 ```
 
 ---
@@ -622,6 +696,15 @@ FRONTEND_URL=http://localhost:5173
 | POST | `/api/reportes/reportes/generar/` | reportes |
 | GET | `/api/reportes/reportes/:id/descargar/` | reportes |
 | GET | `/api/reportes/reportes/tipos/` | reportes |
+| GET | `/api/monitoring/salud/` | monitoring |
+| GET | `/api/monitoring/infraestructura/` | monitoring |
+| GET | `/api/monitoring/backend/` | monitoring |
+| GET | `/api/monitoring/base-datos/` | monitoring |
+| GET | `/api/monitoring/negocio/` | monitoring |
+| GET | `/api/monitoring/resumen/` | monitoring |
+| GET | `/api/monitoring/health/` | monitoring |
+| GET | `/api/monitoring/auditoria/` | monitoring |
+| GET | `/api/monitoring/auditoria/resumen/` | monitoring |
 | GET | `/swagger/` | usuario |
 | GET | `/redoc/` | usuario |
 | GET | `/admin/` | usuario |
@@ -672,6 +755,62 @@ Docente → POST /api/asistencia/justificaciones/aprobar/ (justificacion_id, apr
   1. Si aprueba: estado JUSTIFICADO, asistencia pasa a JUSTIFICADO
   2. Si rechaza: justificación queda RECHAZADA, asistencia mantiene su estado
 ```
+
+---
+
+## Sistema de Auditoría
+
+Todos los microservicios registran automáticamente operaciones CRUD en la tabla centralizada `monitoring_registroauditoria`. El mecanismo tiene dos partes:
+
+### AuditoriaMixin (automático)
+
+Cada ViewSet que hereda `AuditoriaMixin` registra automáticamente CREATE/UPDATE en `perform_create`/`perform_update`, y DELETE en `perform_destroy`:
+
+```python
+from shared.audit import AuditoriaMixin
+
+class MateriaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Materia'
+    ...
+```
+
+### registrar_auditoria() (explícito)
+
+Para acciones personalizadas (`@action`) que no pasan por `perform_create`/`update`/`destroy`, se llama directamente:
+
+```python
+from shared.audit import registrar_auditoria
+
+registrar_auditoria(
+    usuario_id=user.id,
+    usuario_nombre=user.email,
+    accion='CREATE',
+    servicio='usuario',
+    modelo='Usuario',
+    registro_id=usuario.id,
+    descripcion=f"Registro nuevo usuario {usuario.email}",
+    datos_modificados={'email': usuario.email, 'rol': usuario.rol},
+    ip_origen=_obtener_ip(request),
+)
+```
+
+### Tabla de auditoría
+
+Los campos de `monitoring_registroauditoria`:
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| usuario_id | Integer | ID del usuario que realizó la acción |
+| usuario_nombre | String | Email o nombre del usuario |
+| accion | String | CREATE, UPDATE o DELETE |
+| servicio | String | usuario, academico, asistencia, reportes |
+| modelo | String | Nombre del modelo afectado |
+| registro_id | String | PK del registro afectado |
+| descripcion | String | Descripción legible de la acción |
+| datos_modificados | JSON | Snapshot de cambios (antes/después) |
+| ip_origen | String | IP del cliente |
+| fecha_hora | DateTime | Timestamp automático |
 
 ---
 
