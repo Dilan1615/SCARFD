@@ -41,7 +41,6 @@ services:
       BREVO_FROM_EMAIL: ${BREVO_FROM_EMAIL:-josephsebastiannq@gmail.com}
       BREVO_FROM_NAME: ${BREVO_FROM_NAME:-SACARF}
       # ── Monitoreo (nuevo) ──────────────────────────────────────────
-      PROMETHEUS_URL: http://prometheus:9090
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
     depends_on:
       db:
@@ -123,11 +122,19 @@ services:
       - sacarf_network
 
   # ── Monitoreo (nuevo) ────────────────────────────────────────────────
+  # Reemplaza a prometheus + node-exporter + cadvisor + postgres-exporter:
+  # este único contenedor lee CPU/RAM/disco con psutil, contenedores Docker
+  # con el SDK oficial, y Postgres con SQL directo — por eso monta el
+  # socket de Docker y el /proc, /sys y raíz del HOST de solo lectura.
   monitoring-service:
     build: .
     container_name: sacarf_monitoring
     volumes:
       - ./:/app
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/rootfs:ro
     ports:
       - "8005:8005"
     environment:
@@ -137,8 +144,6 @@ services:
     depends_on:
       init:
         condition: service_completed_successfully
-      prometheus:
-        condition: service_started
     restart: unless-stopped
     networks:
       - sacarf_network
@@ -157,63 +162,8 @@ services:
     networks:
       - sacarf_network
 
-  # ── Stack de monitoreo (nuevo) ────────────────────────────────────────
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: sacarf_prometheus
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.retention.time=15d'
-    ports:
-      - "9090:9090"
-    networks:
-      - sacarf_network
-
-  node-exporter:
-    image: prom/node-exporter:latest
-    container_name: sacarf_node_exporter
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    command:
-      - '--path.procfs=/host/proc'
-      - '--path.sysfs=/host/sys'
-      - '--path.rootfs=/rootfs'
-      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
-    networks:
-      - sacarf_network
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: sacarf_cadvisor
-    privileged: true
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-      - /dev/disk/:/dev/disk:ro
-    networks:
-      - sacarf_network
-
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:latest
-    container_name: sacarf_postgres_exporter
-    environment:
-      DATA_SOURCE_NAME: "postgresql://${DB_USER:-sacarf_user}:${DB_PASSWORD:-sacarf_2026}@db:5432/${DB_NAME:-sacarf_db}?sslmode=disable"
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - sacarf_network
-
 volumes:
   postgres_data:
-  prometheus_data:
 
 networks:
   sacarf_network:

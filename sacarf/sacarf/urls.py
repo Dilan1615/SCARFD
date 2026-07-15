@@ -43,6 +43,11 @@ if SERVICE_NAME in ('all', 'reportes'):
         path('api/reportes/', include('apps.reportes.urls')),
     ]
 
+if SERVICE_NAME in ('all', 'monitoring'):
+    urlpatterns += [
+        path('api/monitoring/', include('apps.monitoring.urls')),
+    ]
+
 if SERVICE_NAME in ('all', 'usuario'):
     urlpatterns += [
         path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
