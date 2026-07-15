@@ -17,12 +17,16 @@ from .serializers import (
 )
 from .services import AwsRekognitionService
 from shared.models import HorarioModel, MateriaModel
+# ── Auditoría (nuevo) ────────────────────────────────────────────────────
+from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
 
 
-class AsistenciaViewSet(viewsets.ModelViewSet):
+class AsistenciaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Asistencia.objects.all()
     serializer_class = AsistenciaSerializer
     permission_classes = [permissions.IsAuthenticated]
+    auditoria_servicio = 'asistencia'
+    auditoria_modelo = 'Asistencia'
 
     def get_queryset(self):
         user = self.request.user
@@ -100,6 +104,22 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
                 reconocimiento=reconocimiento
             )
 
+        # ── Auditoría (nuevo) ──────────────────────────────────────────
+        # Esta acción no pasa por perform_create (es un @action manual),
+        # así que se audita explícitamente.
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='CREATE',
+            servicio='asistencia',
+            modelo='Asistencia',
+            registro_id=asistencia.id,
+            descripcion=f"Registró asistencia (estado {estado}) mediante reconocimiento facial",
+            datos_modificados={'estudiante_id': estudiante_id, 'horario_id': horario_id, 'estado': estado},
+            ip_origen=_obtener_ip(request),
+        )
+
         return Response({
             'success': True,
             'message': 'Asistencia registrada exitosamente',
@@ -128,10 +148,12 @@ class AsistenciaViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class JustificacionViewSet(viewsets.ModelViewSet):
+class JustificacionViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Justificacion.objects.all()
     serializer_class = JustificacionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    auditoria_servicio = 'asistencia'
+    auditoria_modelo = 'Justificacion'
 
     def get_queryset(self):
         user = self.request.user
@@ -148,6 +170,8 @@ class JustificacionViewSet(viewsets.ModelViewSet):
         return self.queryset
 
     def create(self, request, *args, **kwargs):
+        # perform_create ya queda cubierto por AuditoriaMixin (registra CREATE
+        # automáticamente), no se necesita ningún cambio adicional aquí.
         data = request.data.copy()
         data['estudiante_id'] = request.user.id
         asistencia_id = data.get('asistencia')
@@ -177,18 +201,31 @@ class JustificacionViewSet(viewsets.ModelViewSet):
             return Response({'error': 'No tienes permiso para aprobar esta justificación'},
                           status=status.HTTP_403_FORBIDDEN)
 
+        comentario = serializer.validated_data.get('comentario', '')
         if serializer.validated_data['aprobar']:
-            justificacion.aprobar(
-                request.user.id,
-                serializer.validated_data.get('comentario', '')
-            )
+            justificacion.aprobar(request.user.id, comentario)
             message = 'Justificación aprobada'
+            accion_auditoria = 'aprobó'
         else:
-            justificacion.rechazar(
-                request.user.id,
-                serializer.validated_data.get('comentario', '')
-            )
+            justificacion.rechazar(request.user.id, comentario)
             message = 'Justificación rechazada'
+            accion_auditoria = 'rechazó'
+
+        # ── Auditoría (nuevo) ──────────────────────────────────────────
+        # `aprobar()`/`rechazar()` mutan el estado fuera de perform_update,
+        # así que se audita explícitamente.
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='UPDATE',
+            servicio='asistencia',
+            modelo='Justificacion',
+            registro_id=justificacion.id,
+            descripcion=f"{usuario_nombre} {accion_auditoria} la justificación #{justificacion.id}",
+            datos_modificados={'estado': justificacion.estado, 'comentario': comentario},
+            ip_origen=_obtener_ip(request),
+        )
 
         return Response({
             'success': True,
@@ -198,6 +235,7 @@ class JustificacionViewSet(viewsets.ModelViewSet):
 
 
 class ReconocimientoViewSet(viewsets.ReadOnlyModelViewSet):
+    # Solo lectura: no requiere auditoría (no muta datos).
     queryset = Reconocimiento.objects.all()
     serializer_class = ReconocimientoSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -209,10 +247,12 @@ class ReconocimientoViewSet(viewsets.ReadOnlyModelViewSet):
         return self.queryset
 
 
-class RegistroFacialViewSet(viewsets.ModelViewSet):
+class RegistroFacialViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = RegistroFacial.objects.all()
     serializer_class = RegistroFacialSerializer
     permission_classes = [permissions.IsAuthenticated]
+    auditoria_servicio = 'asistencia'
+    auditoria_modelo = 'RegistroFacial'
 
     def get_queryset(self):
         user = self.request.user
@@ -259,6 +299,20 @@ class RegistroFacialViewSet(viewsets.ModelViewSet):
         if imagen_url:
             request.user.foto_referencia_url = imagen_url
             request.user.save()
+
+        # ── Auditoría (nuevo) ──────────────────────────────────────────
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='CREATE',
+            servicio='asistencia',
+            modelo='RegistroFacial',
+            registro_id=registro.id,
+            descripcion=f"{usuario_nombre} registró su rostro para reconocimiento facial",
+            datos_modificados={'face_id': resultado['face_id']},
+            ip_origen=_obtener_ip(request),
+        )
 
         return Response({
             'success': True,

@@ -9,4 +9,7 @@ urlpatterns = [
     path('negocio/', views.negocio, name='monitoring-negocio'),
     path('resumen/', views.resumen, name='monitoring-resumen'),
     path('health/', views.health, name='monitoring-health'),
+    # ── Auditoría ────────────────────────────────────────────────────
+    path('auditoria/', views.RegistroAuditoriaListView.as_view(), name='monitoring-auditoria'),
+    path('auditoria/resumen/', views.auditoria_resumen, name='monitoring-auditoria-resumen'),
 ]

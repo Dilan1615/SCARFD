@@ -11,13 +11,16 @@ from .models import Reporte, TipoReporte, FormatoReporte
 from .serializers import ReporteSerializer, GenerarReporteSerializer
 from .services import ReporteService
 from shared.models import Usuario, MateriaModel, CicloModel, HorarioModel
+from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
 
 
 
-class ReporteViewSet(viewsets.ModelViewSet):
+class ReporteViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Reporte.objects.all()
     serializer_class = ReporteSerializer
     permission_classes = [permissions.IsAuthenticated]
+    auditoria_servicio = 'reportes'
+    auditoria_modelo = 'Reporte'
 
     def get_queryset(self):
         user = self.request.user
@@ -91,6 +94,19 @@ class ReporteViewSet(viewsets.ModelViewSet):
             parametros=data,
             generado_por_id=request.user.id,
             nombre=nombre
+        )
+
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='CREATE',
+            servicio='reportes',
+            modelo='Reporte',
+            registro_id=reporte.id,
+            descripcion=f"Generó reporte {titulo} en formato {formato}",
+            datos_modificados={'tipo': tipo, 'formato': formato, 'total_registros': len(datos)},
+            ip_origen=_obtener_ip(request),
         )
 
         return Response({
