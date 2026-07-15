@@ -4,6 +4,7 @@ const SERVICE_ICONS = {
   academico: 'Académico',
   usuario: 'Usuarios',
   asistencia: 'Asistencia',
+  monitoreo: 'Monitoreo',
   reportes: 'Reportes',
 }
 

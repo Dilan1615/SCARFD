@@ -34,11 +34,19 @@ export default function MatriculasList() {
   const load = () => {
     setLoading(true)
     setServiceDown(false)
+
+    const safeGet = (url, params) =>
+      api.get(url, params)
+        .then(r => r.data.results || r.data)
+        .catch(() => [])
+
     Promise.all([
-      api.get('/academico/matriculas/').then(r => r.data.results || r.data),
-      api.get('/usuario/usuarios/', { params: { rol: 'ESTUDIANTE' } }).then(r => r.data.results || r.data),
-      api.get('/academico/carreras/').then(r => r.data.results || r.data),
-      api.get('/academico/ciclos/').then(r => r.data.results || r.data),
+      api.get('/academico/matriculas/')
+        .then(r => r.data.results || r.data)
+        .catch(err => { throw err }),
+      safeGet('/usuario/usuarios/', { params: { rol: 'ESTUDIANTE' } }),
+      safeGet('/academico/carreras/'),
+      safeGet('/academico/ciclos/'),
     ]).then(([matriculas, est, carr, cic]) => {
       setData(matriculas)
       setEstudiantes(est.filter(u => u.rol === 'ESTUDIANTE'))
@@ -46,7 +54,7 @@ export default function MatriculasList() {
       setCiclos(cic)
     }).catch((err) => {
       if (!err.response || err.response.status >= 500) setServiceDown(true)
-      else addToast('Error al cargar datos', 'error')
+      else addToast('Error al cargar matrículas', 'error')
     }).finally(() => setLoading(false))
   }
 
@@ -93,7 +101,16 @@ export default function MatriculasList() {
       setEditItem(null)
       load()
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.non_field_errors?.[0] || 'Error al guardar la matrícula'
+      const data = err.response?.data
+      let msg = 'Error al guardar la matrícula'
+      if (data) {
+        if (data.error) msg = data.error
+        else if (data.non_field_errors?.[0]) msg = data.non_field_errors[0]
+        else {
+          const first = Object.entries(data).find(([, v]) => v?.[0])
+          if (first) msg = first[1][0]
+        }
+      }
       addToast(msg, 'error')
     } finally { setSubmitting(false) }
   }
@@ -130,6 +147,12 @@ export default function MatriculasList() {
         <FormModal open={modal} onClose={() => { setModal(false); setEditItem(null) }}
           title={editItem ? 'Editar Matrícula' : 'Nueva Matrícula'} fields={formFields}
           initialData={editItem} onSubmit={handleSubmit} loading={submitting}
+          emptyMessage={
+            estudiantes.length === 0 ? 'No hay estudiantes disponibles' :
+            carreras.length === 0 ? 'No hay carreras registradas' :
+            ciclos.filter(c => c.estado === 'ACTIVO').length === 0 ? 'No hay ciclos activos' :
+            null
+          }
         />
       )}
     </div>

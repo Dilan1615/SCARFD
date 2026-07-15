@@ -17,6 +17,7 @@ import AsistenciaHoy from './pages/asistencia/AsistenciaHoy'
 import RegistroRostro from './pages/asistencia/RegistroRostro'
 import ReportesList from './pages/reportes/ReportesList'
 import DashboardMonitoring from './pages/monitoring/DashboardMonitoring'
+import LogsActividad from './pages/monitoring/LogsActividad'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -47,6 +48,8 @@ export default function App() {
           <Route path="registro-rostro" element={<RegistroRostro />} />
           <Route path="reportes" element={<ReportesList />} />
           <Route path="monitoring" element={<DashboardMonitoring />} />
+          <Route path="/monitoreo"element={<DashboardMonitoring />}/>
+          <Route path="/monitoreo/logs"element={<LogsActividad />}/>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
