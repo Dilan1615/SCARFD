@@ -15,7 +15,9 @@ import MatriculasList from './pages/academico/MatriculasList'
 import AsistenciaList from './pages/asistencia/AsistenciaList'
 import AsistenciaHoy from './pages/asistencia/AsistenciaHoy'
 import RegistroRostro from './pages/asistencia/RegistroRostro'
+import JustificacionesList from './pages/asistencia/JustificacionesList'
 import ReportesList from './pages/reportes/ReportesList'
+import DashboardMonitoring from './pages/monitoring/DashboardMonitoring'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -43,8 +45,10 @@ export default function App() {
           <Route path="academico/matriculas" element={<MatriculasList />} />
           <Route path="asistencia" element={<AsistenciaList />} />
           <Route path="asistencia/hoy" element={<AsistenciaHoy />} />
+          <Route path="asistencia/justificaciones" element={<JustificacionesList />} />
           <Route path="registro-rostro" element={<RegistroRostro />} />
           <Route path="reportes" element={<ReportesList />} />
+          <Route path="monitoring" element={<DashboardMonitoring />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

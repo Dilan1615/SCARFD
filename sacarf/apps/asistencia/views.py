@@ -148,6 +148,10 @@ class JustificacionViewSet(viewsets.ModelViewSet):
         return self.queryset
 
     def create(self, request, *args, **kwargs):
+        if request.user.rol != 'ESTUDIANTE':
+            return Response({'error': 'Solo los estudiantes pueden solicitar una justificación'},
+                          status=status.HTTP_403_FORBIDDEN)
+
         data = request.data.copy()
         data['estudiante_id'] = request.user.id
         asistencia_id = data.get('asistencia')

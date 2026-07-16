@@ -5,6 +5,7 @@ from .models import (
 )
 from shared.models import Usuario, HorarioModel
 from datetime import datetime, timedelta
+import os
 
 
 def _get_usuario_nombre(user_id):
@@ -132,11 +133,12 @@ class JustificacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Justificacion
-        fields = ['id', 'motivo', 'fecha_solicitud', 'documento_url', 'estado',
+        fields = ['id', 'motivo', 'fecha_solicitud', 'documento', 'estado',
                   'estado_display', 'asistencia', 'estudiante_id', 'estudiante_nombre',
                   'docente_aprueba_id', 'docente_aprueba_nombre', 'fecha_respuesta',
                   'comentario_docente']
         read_only_fields = ['id', 'fecha_solicitud', 'fecha_respuesta']
+        extra_kwargs = {'documento': {'required': True}}
 
     def get_estudiante_nombre(self, obj):
         return _get_usuario_nombre(obj.estudiante_id)
@@ -148,6 +150,33 @@ class JustificacionSerializer(serializers.ModelSerializer):
 
     def get_estado_display(self, obj):
         return obj.get_estado_display()
+
+    def validate_documento(self, value):
+        content_type = getattr(value, 'content_type', '') or ''
+        ext = os.path.splitext(value.name)[1].lower()
+        if content_type not in ('image/png', 'image/jpeg', 'image/jpg') and ext not in ('.png', '.jpg', '.jpeg'):
+            raise serializers.ValidationError("El comprobante médico debe ser una imagen en formato PNG o JPG.")
+
+        max_size = 5 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError("El comprobante médico no debe superar 5 MB.")
+
+        # Verifica que el contenido sea realmente una imagen válida, no solo la extensión/mimetype declarados
+        try:
+            from PIL import Image
+            value.seek(0)
+            imagen = Image.open(value)
+            imagen.verify()
+            if imagen.format not in ('PNG', 'JPEG'):
+                raise serializers.ValidationError("El comprobante médico debe ser una imagen PNG o JPG válida.")
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            raise serializers.ValidationError("El archivo no es una imagen válida.")
+        finally:
+            value.seek(0)
+
+        return value
 
 
 class AprobarJustificacionSerializer(serializers.Serializer):

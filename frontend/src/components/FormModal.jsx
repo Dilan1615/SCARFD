@@ -1,28 +1,133 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Shield, ShieldAlert, ShieldCheck } from 'lucide-react'
 
 export default function FormModal({ open, onClose, title, fields, initialData, onSubmit, loading }) {
   const [form, setForm] = useState({})
+  const [errors, setErrors] = useState({})
 
   useEffect(() => {
     if (open) {
       setForm(initialData || {})
+      setErrors({})
     }
   }, [open, initialData])
+
+  const getFieldLabel = (field) => field?.label || 'Este campo'
+
+  const validateField = (field, rawValue) => {
+    const label = getFieldLabel(field)
+    const value = rawValue ?? ''
+    const textValue = typeof value === 'string' ? value.trim() : String(value)
+
+    const isEmpty = value === '' || value === null || value === undefined || (field?.type === 'file' && !value)
+
+    if (field?.required && isEmpty) {
+      if (field.type === 'select') return `Seleccione una opción para ${label}.`
+      if (field.type === 'file') return `Adjunte un archivo para ${label}.`
+      return `El campo ${label} es obligatorio.`
+    }
+
+    if (isEmpty) return ''
+
+    if (field?.numeric && !/^\d+$/.test(textValue)) {
+      return `El campo ${label} solo admite números.`
+    }
+
+    if (field?.type === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(textValue)) {
+        return `Ingrese un correo electrónico válido para ${label}.`
+      }
+    }
+
+    if (field?.type === 'number') {
+      const numericValue = Number(textValue)
+      if (!Number.isFinite(numericValue)) {
+        return `El campo ${label} debe ser un número válido.`
+      }
+      if (field.min !== undefined && numericValue < Number(field.min)) {
+        return `El campo ${label} debe ser mayor o igual a ${field.min}.`
+      }
+      if (field.max !== undefined && numericValue > Number(field.max)) {
+        return `El campo ${label} debe ser menor o igual a ${field.max}.`
+      }
+    }
+
+    if (field?.type === 'date' && Number.isNaN(Date.parse(textValue))) {
+      return `Seleccione una fecha válida para ${label}.`
+    }
+
+    if (field?.type === 'time' && !/^\d{2}:\d{2}(:\d{2})?$/.test(textValue)) {
+      return `Seleccione una hora válida para ${label}.`
+    }
+
+    if (field?.type === 'password') {
+      if (textValue.length < 8) {
+        return `La contraseña debe tener al menos 8 caracteres.`
+      }
+      if (!/[A-Z]/.test(textValue)) {
+        return `La contraseña debe incluir al menos una letra mayúscula.`
+      }
+      if (!/[0-9]/.test(textValue)) {
+        return `La contraseña debe incluir al menos un número.`
+      }
+      if (!/[^A-Za-z0-9]/.test(textValue)) {
+        return `La contraseña debe incluir al menos un símbolo.`
+      }
+    }
+
+    if (field?.minLength !== undefined && textValue.length < Number(field.minLength)) {
+      return `El campo ${label} debe tener al menos ${field.minLength} caracteres.`
+    }
+
+    if (field?.maxLength !== undefined && textValue.length > Number(field.maxLength)) {
+      return `El campo ${label} no puede superar ${field.maxLength} caracteres.`
+    }
+
+    return ''
+  }
+
+  const validateForm = () => {
+    const nextErrors = {}
+
+    fields.forEach((field) => {
+      const error = validateField(field, form[field.key])
+      if (error) nextErrors[field.key] = error
+    })
+
+    setErrors(nextErrors)
+    return Object.keys(nextErrors).length === 0
+  }
 
   const handleChange = (key, value, field) => {
     if (field?.type === 'file') {
       setForm((prev) => ({ ...prev, [key]: value }))
+      setErrors((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
       return
     }
     if (field?.numeric) {
       value = value.replace(/\D/g, '')
     }
     setForm((prev) => ({ ...prev, [key]: value }))
+    setErrors((prev) => {
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
+  }
+
+  const handleBlur = (field) => {
+    const error = validateField(field, form[field.key])
+    setErrors((prev) => ({ ...prev, [field.key]: error }))
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    if (!validateForm()) return
     onSubmit(form)
   }
 
@@ -59,7 +164,7 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="px-6 py-5 space-y-4">
           {fields.map((field) => (
               <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -69,8 +174,9 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
                 <select
                   value={form[field.key] ?? ''}
                   onChange={(e) => handleChange(field.key, e.target.value, field)}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-unl-red/20 focus:border-unl-red outline-none text-sm bg-gray-50 focus:bg-white transition-all"
-                  required={field.required}
+                  onBlur={() => handleBlur(field)}
+                  aria-invalid={Boolean(errors[field.key])}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 outline-none text-sm bg-gray-50 focus:bg-white transition-all ${errors[field.key] ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 focus:ring-unl-red/20 focus:border-unl-red'}`}
                 >
                   <option value="">Seleccionar...</option>
                   {field.options?.map((opt) => (
@@ -81,15 +187,18 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
                 <textarea
                   value={form[field.key] ?? ''}
                   onChange={(e) => handleChange(field.key, e.target.value, field)}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-unl-red/20 focus:border-unl-red outline-none text-sm bg-gray-50 focus:bg-white transition-all resize-none"
+                  onBlur={() => handleBlur(field)}
+                  aria-invalid={Boolean(errors[field.key])}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 outline-none text-sm bg-gray-50 focus:bg-white transition-all resize-none ${errors[field.key] ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 focus:ring-unl-red/20 focus:border-unl-red'}`}
                   rows={3}
-                  required={field.required}
                 />
               ) : field.type === 'file' ? (
                 <input
                   type="file"
                   accept={field.accept || 'image/*'}
                   onChange={(e) => handleChange(field.key, e.target.files[0], field)}
+                  onBlur={() => handleBlur(field)}
+                  aria-invalid={Boolean(errors[field.key])}
                   className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-medium file:bg-unl-red/10 file:text-unl-red hover:file:bg-unl-red/20 transition-all cursor-pointer"
                 />
               ) : (
@@ -97,8 +206,9 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
                   type={field.type || 'text'}
                   value={form[field.key] ?? ''}
                   onChange={(e) => handleChange(field.key, e.target.value, field)}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-unl-red/20 focus:border-unl-red outline-none text-sm bg-gray-50 focus:bg-white transition-all"
-                  required={field.required}
+                  onBlur={() => handleBlur(field)}
+                  aria-invalid={Boolean(errors[field.key])}
+                  className={`w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 outline-none text-sm bg-gray-50 focus:bg-white transition-all ${errors[field.key] ? 'border-red-300 focus:ring-red-500/20 focus:border-red-500' : 'border-gray-200 focus:ring-unl-red/20 focus:border-unl-red'}`}
                   step={field.step}
                   min={field.min}
                   max={field.max}
@@ -108,6 +218,9 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
               )}
               {field.hint && (
                 <p className="text-xs text-gray-400 mt-1">{field.hint}</p>
+              )}
+              {errors[field.key] && (
+                <p className="text-xs text-red-600 mt-1.5">{errors[field.key]}</p>
               )}
               {field.key === 'password' && form[field.key] && (() => {
                 const score = getPasswordStrength(form[field.key])

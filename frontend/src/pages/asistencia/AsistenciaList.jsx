@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
+import FormModal from '../../components/FormModal'
 import MaintenanceBanner from '../../components/MaintenanceBanner'
-import { CalendarCheck } from 'lucide-react'
+import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../contexts/ToastContext'
+import { CalendarCheck, FileCheck2 } from 'lucide-react'
 
 const estadoColors = {
   PRESENTE: 'bg-green-100 text-green-700',
@@ -11,26 +14,16 @@ const estadoColors = {
   JUSTIFICADO: 'bg-blue-100 text-blue-700',
 }
 
-const columns = [
-  { key: 'estudiante_nombre', label: 'Estudiante' },
-  { key: 'fecha', label: 'Fecha' },
-  { key: 'hora_registro', label: 'Hora' },
-  { key: 'estado_display', label: 'Estado', render: (v, r) => (
-    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${estadoColors[r.estado] || 'bg-gray-100 text-gray-700'}`}>{v}</span>
-  )},
-  { key: 'confianza', label: 'Confianza', render: (v) => {
-    const pct = v?.toFixed(1) || '0.0'
-    const color = Number(pct) >= 80 ? 'text-green-600' : Number(pct) >= 60 ? 'text-amber-600' : 'text-red-600'
-    return <span className={`font-medium ${color}`}>{pct}%</span>
-  }},
-  { key: 'horario_info', label: 'Materia', render: (v) => v?.materia || '-' },
-  { key: 'horario_info', label: 'Aula', render: (v) => v?.aula || '-' },
-]
-
 export default function AsistenciaList() {
+  const { user } = useAuth()
+  const { addToast } = useToast()
+  const isEstudiante = user?.rol === 'ESTUDIANTE'
+
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [serviceDown, setServiceDown] = useState(false)
+  const [justificando, setJustificando] = useState(null)
+  const [saving, setSaving] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -41,6 +34,55 @@ export default function AsistenciaList() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleJustificar = async (form) => {
+    setSaving(true)
+    try {
+      const formData = new FormData()
+      formData.append('asistencia', justificando.id)
+      formData.append('motivo', form.motivo)
+      if (form.documento) {
+        formData.append('documento', form.documento)
+      }
+      await api.post('/asistencia/justificaciones/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      addToast('Comprobante enviado, a la espera de validación', 'success')
+      setJustificando(null)
+      load()
+    } catch (err) {
+      addToast(err.response?.data?.error || Object.values(err.response?.data || {})[0]?.[0] || 'No se pudo enviar el comprobante', 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const columns = [
+    { key: 'estudiante_nombre', label: 'Estudiante' },
+    { key: 'fecha', label: 'Fecha' },
+    { key: 'hora_registro', label: 'Hora' },
+    { key: 'estado_display', label: 'Estado', render: (v, r) => (
+      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${estadoColors[r.estado] || 'bg-gray-100 text-gray-700'}`}>{v}</span>
+    )},
+    { key: 'confianza', label: 'Confianza', render: (v) => {
+      const pct = v?.toFixed(1) || '0.0'
+      const color = Number(pct) >= 80 ? 'text-green-600' : Number(pct) >= 60 ? 'text-amber-600' : 'text-red-600'
+      return <span className={`font-medium ${color}`}>{pct}%</span>
+    }},
+    { key: 'horario_info', label: 'Materia', render: (v) => v?.materia || '-' },
+    { key: 'horario_info', label: 'Aula', render: (v) => v?.aula || '-' },
+    ...(isEstudiante ? [{
+      key: 'id', label: 'Acciones', render: (_, r) => r.estado === 'AUSENTE' ? (
+        <button
+          onClick={() => setJustificando(r)}
+          className="p-2 text-gray-400 hover:text-unl-red hover:bg-unl-red/10 rounded-lg transition-all"
+          title="Subir comprobante médico"
+        >
+          <FileCheck2 size={15} />
+        </button>
+      ) : null
+    }] : []),
+  ]
 
   return (
     <div className="space-y-5">
@@ -55,6 +97,26 @@ export default function AsistenciaList() {
         </div>
       </div>
       <DataTable title="Asistencias" columns={columns} data={data} loading={loading} />
+
+      <FormModal
+        open={!!justificando}
+        onClose={() => setJustificando(null)}
+        title="Subir comprobante médico"
+        loading={saving}
+        initialData={{ motivo: '', documento: null }}
+        onSubmit={handleJustificar}
+        fields={[
+          { key: 'motivo', label: 'Motivo de la falta', type: 'textarea', required: true },
+          {
+            key: 'documento',
+            label: 'Comprobante médico (PNG o JPG)',
+            type: 'file',
+            required: true,
+            accept: 'image/png, image/jpeg',
+            allowedTypes: ['image/png', 'image/jpeg', 'image/jpg']
+          },
+        ]}
+      />
     </div>
   )
 }

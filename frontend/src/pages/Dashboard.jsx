@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 import { useAuth } from '../contexts/AuthContext'
 import AsistenciaHoy from './asistencia/AsistenciaHoy'
-import { Users, GraduationCap, BookOpen, CalendarCheck, TrendingUp, Clock, Shield, Camera, WifiOff } from 'lucide-react'
+import { Users, GraduationCap, BookOpen, CalendarCheck, TrendingUp, Clock, Shield, Camera, WifiOff, Activity } from 'lucide-react'
 
 function StatCard({ icon: Icon, label, value, color, delay }) {
   return (
@@ -83,6 +83,7 @@ export default function Dashboard() {
     { path: '/academico/materias', label: 'Materias', desc: 'Gestionar materias', icon: BookOpen },
     { path: '/asistencia', label: 'Asistencia', desc: 'Registrar asistencias', icon: CalendarCheck },
     { path: '/reportes', label: 'Reportes', desc: 'Generar reportes', icon: TrendingUp },
+    { path: '/monitoring', label: 'Monitoreo', desc: 'Ver estado del sistema', icon: Activity },
   ]
 
   return (
