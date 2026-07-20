@@ -1,5 +1,6 @@
-import io
+import os
 from datetime import datetime
+from django.conf import settings
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
@@ -120,6 +121,15 @@ class ReporteService:
         wb.save(buffer)
         buffer.seek(0)
         return buffer
+
+    @staticmethod
+    def guardar_archivo(buffer, nombre, extension):
+        carpeta = os.path.join(settings.MEDIA_ROOT, 'reportes')
+        os.makedirs(carpeta, exist_ok=True)
+        filepath = os.path.join(carpeta, f"{nombre}.{extension}")
+        with open(filepath, 'wb') as f:
+            f.write(buffer.getvalue())
+        return f"reportes/{nombre}.{extension}"
 
     @staticmethod
     def _get_materia_nombre(horario_id):
