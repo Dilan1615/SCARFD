@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 from datetime import datetime, timedelta
 
 from django.utils.dateparse import parse_datetime
@@ -11,14 +11,13 @@ from rest_framework.response import Response
 from . import services
 from .models import RegistroAuditoria
 from .serializers import RegistroAuditoriaSerializer
-=======
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 
 from . import services
->>>>>>> moduloJustificacion
+
 
 
 @api_view(['GET'])
@@ -31,22 +30,22 @@ def estado_servicios(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def infraestructura(request):
-<<<<<<< HEAD
+
     """CPU, RAM, disco (psutil) y estado de contenedores Docker (SDK)."""
-=======
+
     """CPU, RAM, disco (node-exporter) y estado de contenedores Docker (cAdvisor)."""
->>>>>>> moduloJustificacion
+
     return Response(services.obtener_infraestructura())
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def backend_metrics(request):
-<<<<<<< HEAD
+
     """Registros de auditoría recientes por servicio y acción."""
-=======
+
     """Peticiones/min, tiempo de respuesta, errores 4xx/5xx y desglose por microservicio."""
->>>>>>> moduloJustificacion
+
     rango = int(request.query_params.get('rango_minutos', 30))
     rango = max(5, min(rango, 180))
     return Response(services.obtener_metricas_backend(rango_minutos=rango))
@@ -55,11 +54,11 @@ def backend_metrics(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def base_datos(request):
-<<<<<<< HEAD
+
     """Conexiones activas, transacciones y almacenamiento de PostgreSQL (SQL directa)."""
-=======
+
     """Conexiones activas, consultas por segundo y almacenamiento de PostgreSQL."""
->>>>>>> moduloJustificacion
+
     return Response(services.obtener_metricas_bd())
 
 
@@ -91,7 +90,7 @@ def resumen(request):
 def health(request):
     """Sin autenticación: usado por el propio monitoring para su self-check."""
     return Response({'status': 'ok', 'service': 'monitoring'})
-<<<<<<< HEAD
+
 
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -179,5 +178,3 @@ def auditoria_resumen(request):
         'por_accion': por_accion,
         'por_servicio': por_servicio,
     }, status=status.HTTP_200_OK)
-=======
->>>>>>> moduloJustificacion

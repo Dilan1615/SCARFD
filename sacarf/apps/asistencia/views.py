@@ -170,15 +170,15 @@ class JustificacionViewSet(AuditoriaMixin, viewsets.ModelViewSet):
         return self.queryset
 
     def create(self, request, *args, **kwargs):
-<<<<<<< HEAD
+
         # perform_create ya queda cubierto por AuditoriaMixin (registra CREATE
         # automáticamente), no se necesita ningún cambio adicional aquí.
-=======
+
         if request.user.rol != 'ESTUDIANTE':
             return Response({'error': 'Solo los estudiantes pueden solicitar una justificación'},
                           status=status.HTTP_403_FORBIDDEN)
 
->>>>>>> moduloJustificacion
+
         data = request.data.copy()
         asistencia_id = data.get('asistencia')
         existente = None

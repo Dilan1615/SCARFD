@@ -9,10 +9,9 @@ urlpatterns = [
     path('api/reportes/', include('apps.reportes.urls')),
     # ── Monitoreo (nuevo) ────────────────────────────────────────────
     path('health/', lambda request: JsonResponse({'status': 'ok', 'service': 'reportes'})),
-<<<<<<< HEAD
-=======
+
     path('', include('django_prometheus.urls')),  # expone /metrics
->>>>>>> moduloJustificacion
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
