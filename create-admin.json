@@ -1,0 +1,1 @@
+{"containerOverrides":[{"name":"usuario","command":["python","services/usuario/manage.py","shell","-c","from django.contrib.auth import get_user_model; U=get_user_model(); U.objects.filter(email=\"draw14x@gmail.com\").exists() or U.objects.create_superuser(email=\"draw14x@gmail.com\",password=\"Sacarf2026!\",cedula=\"0000000000\",rol=\"ADMIN\")"]}]}

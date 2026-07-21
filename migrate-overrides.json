@@ -1,0 +1,1 @@
+{"containerOverrides":[{"name":"usuario","command":["python","services/usuario/manage.py","migrate"]}]}

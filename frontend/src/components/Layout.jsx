@@ -4,6 +4,9 @@ import { useAuth } from '../contexts/AuthContext'
 import {
   LayoutDashboard, Users, GraduationCap, CalendarCheck,
   ClipboardList, LogOut, Menu, X, ChevronDown, User, ScanFace, Activity,
+
+  FileCheck2,
+
 } from 'lucide-react'
 
 function useNavItems() {
@@ -27,8 +30,11 @@ function useNavItems() {
     ...(isStudent ? [
       { to: '/asistencia/hoy', label: 'Asistencia Hoy', icon: CalendarCheck },
       { to: '/registro-rostro', label: 'Registrar Rostro', icon: ScanFace },
+      { to: '/asistencia', label: 'Mis Asistencias', icon: CalendarCheck },
+      { to: '/asistencia/justificaciones', label: 'Mis Justificaciones', icon: FileCheck2 },
     ] : [
       { to: '/asistencia', label: 'Asistencia', icon: CalendarCheck },
+      { to: '/asistencia/justificaciones', label: 'Justificaciones', icon: FileCheck2 },
     ]),
     { to: '/reportes', label: 'Reportes', icon: ClipboardList },
   ]

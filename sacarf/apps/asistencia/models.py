@@ -1,6 +1,13 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator
 from datetime import date, datetime, time, timedelta
+import uuid
+
+
+def ruta_comprobante_medico(instance, filename):
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else 'jpg'
+    return f'justificaciones/{instance.estudiante_id}/{uuid.uuid4()}.{ext}'
 
 
 class EstadoAsistencia(models.TextChoices):
@@ -121,7 +128,11 @@ class Asistencia(models.Model):
 class Justificacion(models.Model):
     motivo = models.TextField()
     fecha_solicitud = models.DateTimeField(auto_now_add=True)
-    documento_url = models.URLField(blank=True, null=True)
+    documento = models.FileField(
+        upload_to=ruta_comprobante_medico,
+        validators=[FileExtensionValidator(allowed_extensions=['png', 'jpg', 'jpeg'])],
+        help_text='Comprobante médico en formato PNG o JPG'
+    )
     estado = models.CharField(max_length=10, choices=EstadoJustificacion.choices, default='PENDIENTE')
     asistencia = models.OneToOneField(Asistencia, on_delete=models.CASCADE, related_name='justificacion')
     estudiante_id = models.IntegerField()
