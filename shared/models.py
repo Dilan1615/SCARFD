@@ -109,8 +109,17 @@ class MateriaModel(models.Model):
         return f"{self.codigo} - {self.nombre}"
 
 
+DIA_SEMANA_CHOICES = (
+    ('LUNES', 'Lunes'),
+    ('MARTES', 'Martes'),
+    ('MIERCOLES', 'Miércoles'),
+    ('JUEVES', 'Jueves'),
+    ('VIERNES', 'Viernes'),
+)
+
+
 class HorarioModel(models.Model):
-    dia_semana = models.CharField(max_length=10)
+    dia_semana = models.CharField(max_length=10, choices=DIA_SEMANA_CHOICES)
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
     minutos_tolerancia = models.PositiveIntegerField(default=10)

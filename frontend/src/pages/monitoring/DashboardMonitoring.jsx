@@ -14,8 +14,10 @@ import {
   ScanFace,
   FileBarChart,
   RefreshCw,
+
   ArrowRight,
   AlertTriangle,
+
 } from 'lucide-react'
 
 import monitoringService from '../../services/monitoringService'
@@ -24,21 +26,26 @@ import MetricCard from '../../components/MetricCard'
 import LineChart from '../../components/LineChart'
 import BarChartComp from '../../components/BarChart'
 import AlertPanel, { generarAlertas } from '../../components/AlertPanel'
+
 import ActivityLogTable from '../../components/ActivityLogTable'
+
 import MaintenanceBanner from '../../components/MaintenanceBanner'
 
 const INTERVALO_REFRESCO_MS = 15000
 
 export default function DashboardMonitoring() {
   const [datos, setDatos] = useState(null)
+
   const [logsRecientes, setLogsRecientes] = useState([])
   const [errorLogs, setErrorLogs] = useState(null)
+
   const [cargando, setCargando] = useState(true)
   const [monitoringDown, setMonitoringDown] = useState(false)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null)
   const intervaloRef = useRef(null)
 
   const cargarDatos = useCallback(async () => {
+
     // ── IMPORTANTE ────────────────────────────────────────────────────
     // Antes esto iba en un único Promise.all([getResumen(), getAuditoria()]):
     // si CUALQUIERA de las dos fallaba, la promesa combinada rechazaba
@@ -81,6 +88,21 @@ export default function DashboardMonitoring() {
     }
 
     setCargando(false)
+
+    try {
+      const resumen = await monitoringService.getResumen()
+      setDatos(resumen)
+      setMonitoringDown(false)
+      setUltimaActualizacion(new Date())
+    } catch (err) {
+      // Mismo patrón que el resto del proyecto: 5xx o error de red -> banner
+      if (!err.response || err.response.status >= 500) {
+        setMonitoringDown(true)
+      }
+    } finally {
+      setCargando(false)
+    }
+
   }, [])
 
   useEffect(() => {
@@ -99,10 +121,14 @@ export default function DashboardMonitoring() {
   }
 
   if (monitoringDown) {
+
     // Antes: <MaintenanceBanner servicio="monitoreo" /> — el componente
     // espera la prop `service`, no `servicio`; con el nombre equivocado
     // el banner mostraba "undefined" en vez de "MONITOREO".
     return <MaintenanceBanner service="monitoreo" />
+
+    return <MaintenanceBanner servicio="monitoreo" />
+
   }
 
   const { servicios = [], infraestructura, backend, base_datos: baseDatos, negocio } = datos || {}
@@ -297,6 +323,7 @@ export default function DashboardMonitoring() {
         </div>
       </section>
 
+
       {/* ── Logs de actividad del sistema ───────────────────────────── */}
       <section>
         <div className="mb-3 flex items-center justify-between">
@@ -321,6 +348,7 @@ export default function DashboardMonitoring() {
           <ActivityLogTable logs={logsRecientes} compacto />
         )}
       </section>
+
     </div>
   )
 }

@@ -5,6 +5,7 @@ from .models import (
 )
 from shared.models import Usuario, HorarioModel
 from datetime import datetime, timedelta
+import os
 
 
 def _get_usuario_nombre(user_id):
@@ -45,16 +46,24 @@ class AsistenciaSerializer(serializers.ModelSerializer):
     estudiante_nombre = serializers.SerializerMethodField()
     horario_info = serializers.SerializerMethodField()
     estado_display = serializers.SerializerMethodField()
+    justificacion_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Asistencia
         fields = ['id', 'fecha', 'hora_registro', 'estado', 'estado_display',
                   'confianza', 'estudiante_id', 'estudiante_nombre', 'horario_id',
-                  'horario_info', 'reconocimiento']
+                  'horario_info', 'reconocimiento', 'justificacion_info']
         read_only_fields = ['id', 'fecha', 'hora_registro']
 
     def get_estudiante_nombre(self, obj):
         return _get_usuario_nombre(obj.estudiante_id)
+
+    def get_justificacion_info(self, obj):
+        try:
+            j = obj.justificacion
+        except Justificacion.DoesNotExist:
+            return None
+        return {'estado': j.estado, 'comentario_docente': j.comentario_docente}
 
     def get_horario_info(self, obj):
         try:
@@ -132,11 +141,13 @@ class JustificacionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Justificacion
-        fields = ['id', 'motivo', 'fecha_solicitud', 'documento_url', 'estado',
+        fields = ['id', 'motivo', 'fecha_solicitud', 'documento', 'estado',
                   'estado_display', 'asistencia', 'estudiante_id', 'estudiante_nombre',
                   'docente_aprueba_id', 'docente_aprueba_nombre', 'fecha_respuesta',
                   'comentario_docente']
-        read_only_fields = ['id', 'fecha_solicitud', 'fecha_respuesta']
+        read_only_fields = ['id', 'fecha_solicitud', 'fecha_respuesta', 'estado',
+                             'docente_aprueba_id', 'comentario_docente', 'estudiante_id']
+        extra_kwargs = {'documento': {'required': True}}
 
     def get_estudiante_nombre(self, obj):
         return _get_usuario_nombre(obj.estudiante_id)
@@ -148,6 +159,33 @@ class JustificacionSerializer(serializers.ModelSerializer):
 
     def get_estado_display(self, obj):
         return obj.get_estado_display()
+
+    def validate_documento(self, value):
+        content_type = getattr(value, 'content_type', '') or ''
+        ext = os.path.splitext(value.name)[1].lower()
+        if content_type not in ('image/png', 'image/jpeg', 'image/jpg') and ext not in ('.png', '.jpg', '.jpeg'):
+            raise serializers.ValidationError("El comprobante médico debe ser una imagen en formato PNG o JPG.")
+
+        max_size = 5 * 1024 * 1024
+        if value.size > max_size:
+            raise serializers.ValidationError("El comprobante médico no debe superar 5 MB.")
+
+        # Verifica que el contenido sea realmente una imagen válida, no solo la extensión/mimetype declarados
+        try:
+            from PIL import Image
+            value.seek(0)
+            imagen = Image.open(value)
+            imagen.verify()
+            if imagen.format not in ('PNG', 'JPEG'):
+                raise serializers.ValidationError("El comprobante médico debe ser una imagen PNG o JPG válida.")
+        except serializers.ValidationError:
+            raise
+        except Exception:
+            raise serializers.ValidationError("El archivo no es una imagen válida.")
+        finally:
+            value.seek(0)
+
+        return value
 
 
 class AprobarJustificacionSerializer(serializers.Serializer):

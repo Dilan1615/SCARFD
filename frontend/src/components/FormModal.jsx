@@ -165,11 +165,13 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="px-6 py-5 space-y-4">
+
           {emptyMessage && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 text-center">
               {emptyMessage}
             </div>
           )}
+
           {fields.map((field) => (
               <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
