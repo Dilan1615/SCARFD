@@ -126,9 +126,6 @@ with connection.cursor() as cursor:
 " 2>&1
 
     log "=== INIT COMPLETADO ==="
-=======
-    print('Superusuario admin ya existe')
-"
 
     echo "Creando datos de demostración (docente, estudiante, materia y falta de ejemplo)..."
     python sacarf/manage.py shell -c "
