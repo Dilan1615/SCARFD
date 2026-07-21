@@ -11,43 +11,54 @@ from .serializers import (
 )
 from shared.permissions import IsAdminForMutation
 from shared.models import Usuario, AsistenciaModel, RegistroFacialModel
+from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
 
 
-class CarreraViewSet(viewsets.ModelViewSet):
+class CarreraViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Carrera.objects.all()
     serializer_class = CarreraSerializer
     permission_classes = [IsAdminForMutation]
     search_fields = ['nombre', 'codigo']
     filterset_fields = ['modalidad']
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Carrera'
 
 
-class CicloViewSet(viewsets.ModelViewSet):
+class CicloViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Ciclo.objects.all()
     serializer_class = CicloSerializer
     permission_classes = [IsAdminForMutation]
     filterset_fields = ['carrera', 'estado']
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Ciclo'
 
 
-class MateriaViewSet(viewsets.ModelViewSet):
+class MateriaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Materia.objects.all()
     serializer_class = MateriaSerializer
     permission_classes = [IsAdminForMutation]
     search_fields = ['nombre', 'codigo']
     filterset_fields = ['carrera', 'ciclo', 'docente_id']
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Materia'
 
 
-class HorarioViewSet(viewsets.ModelViewSet):
+class HorarioViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Horario.objects.all()
     serializer_class = HorarioSerializer
     permission_classes = [IsAdminForMutation]
     filterset_fields = ['materia', 'dia_semana']
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Horario'
 
 
-class MatriculaViewSet(viewsets.ModelViewSet):
+class MatriculaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Matricula.objects.all()
     serializer_class = MatriculaSerializer
     permission_classes = [IsAdminForMutation]
     filterset_fields = ['estudiante_id', 'carrera', 'ciclo', 'estado']
+    auditoria_servicio = 'academico'
+    auditoria_modelo = 'Matricula'
 
     def get_queryset(self):
         return Matricula.objects.select_related('carrera', 'ciclo')

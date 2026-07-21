@@ -9,7 +9,9 @@ urlpatterns = [
     path('api/academico/', include('apps.academico.urls')),
      # ── Monitoreo (nuevo) ────────────────────────────────────────────
     path('health/', lambda request: JsonResponse({'status': 'ok', 'service': 'academico'})),
+
     path('', include('django_prometheus.urls')),  # expone /metrics
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

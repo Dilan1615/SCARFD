@@ -19,6 +19,8 @@ import JustificacionesList from './pages/asistencia/JustificacionesList'
 import ReportesList from './pages/reportes/ReportesList'
 import DashboardMonitoring from './pages/monitoring/DashboardMonitoring'
 
+import LogsActividad from './pages/monitoring/LogsActividad'
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="flex items-center justify-center h-screen"><div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>
@@ -49,6 +51,9 @@ export default function App() {
           <Route path="registro-rostro" element={<RegistroRostro />} />
           <Route path="reportes" element={<ReportesList />} />
           <Route path="monitoring" element={<DashboardMonitoring />} />
+
+          <Route path="/monitoreo"element={<DashboardMonitoring />}/>
+          <Route path="/monitoreo/logs"element={<LogsActividad />}/>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

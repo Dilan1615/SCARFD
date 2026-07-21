@@ -43,6 +43,11 @@ export default function AlertPanel({ alertas = [] }) {
   )
 }
 
+
+// Contenedores cuyo estado "detenido" es normal y esperado (no son un
+// problema real, por eso se excluyen de las alertas de infraestructura).
+const CONTENEDORES_EFIMEROS = ['sacarf_init']
+
 /**
  * Genera la lista de alertas a partir de la respuesta cruda del backend
  * de monitoreo. Se usa desde DashboardMonitoring.jsx.
@@ -74,7 +79,11 @@ export function generarAlertas({ servicios = [], infraestructura, backend }) {
     }
 
     infraestructura.contenedores
+
+      ?.filter((c) => c.estado === 'detenido' && !CONTENEDORES_EFIMEROS.includes(c.nombre))
+
       ?.filter((c) => c.estado === 'detenido')
+
       .forEach((c) => alertas.push({ nivel: 'advertencia', mensaje: `Contenedor "${c.nombre}" detenido.` }))
   }
 
@@ -86,4 +95,8 @@ export function generarAlertas({ servicios = [], infraestructura, backend }) {
   }
 
   return alertas
+
 }
+
+
+

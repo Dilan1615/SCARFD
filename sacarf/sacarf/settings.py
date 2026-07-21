@@ -18,6 +18,7 @@ SERVICE_NAME = os.getenv('SERVICE_NAME', 'all')
 # ---------------------------------------------------------------------------
 # INSTALLED APPS
 # ---------------------------------------------------------------------------
+
 BASE_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -35,19 +36,47 @@ THIRD_PARTY_APPS = [
     'drf_yasg',
 ]
 
-if SERVICE_NAME in ('all', 'init', 'usuario'):
-    OWN_APPS = ['apps.usuario']
-elif SERVICE_NAME == 'academico':
-    OWN_APPS = ['shared', 'apps.academico']
-elif SERVICE_NAME == 'asistencia':
-    OWN_APPS = ['shared', 'apps.asistencia']
-elif SERVICE_NAME == 'reportes':
-    OWN_APPS = ['shared', 'apps.reportes']
-else:
-    OWN_APPS = ['apps.usuario', 'apps.academico', 'apps.asistencia', 'apps.reportes']
 
-if SERVICE_NAME in ('all', 'init'):
-    OWN_APPS = ['apps.usuario', 'apps.academico', 'apps.asistencia', 'apps.reportes']
+if SERVICE_NAME == 'usuario':
+    OWN_APPS = [
+        'apps.usuario',
+    ]
+
+elif SERVICE_NAME == 'academico':
+    OWN_APPS = [
+        'shared',
+        'apps.academico',
+    ]
+
+elif SERVICE_NAME == 'asistencia':
+    OWN_APPS = [
+        'shared',
+        'apps.asistencia',
+    ]
+
+elif SERVICE_NAME == 'reportes':
+    OWN_APPS = [
+        'shared',
+        'apps.reportes',
+    ]
+
+elif SERVICE_NAME == 'monitoring':
+    OWN_APPS = [
+        'shared',
+        'apps.monitoring',
+    ]
+
+else:
+    # 'all', 'init': carga completa (monolito)
+    OWN_APPS = [
+        'shared',
+        'apps.usuario',
+        'apps.academico',
+        'apps.asistencia',
+        'apps.reportes',
+        'apps.monitoring',
+    ]
+
 
 INSTALLED_APPS = BASE_APPS + THIRD_PARTY_APPS + OWN_APPS
 
@@ -118,19 +147,28 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760
 
 # ---------------------------------------------------------------------------
-# AUTH (varía según el servicio)
+# AUTH
 # ---------------------------------------------------------------------------
+# usuario-service (y el monolito 'all'/'init') usa el modelo real de
+# apps.usuario. Los demás microservicios usan el espejo shared.Usuario
+# (managed=False, solo lectura) como AUTH_USER_MODEL.
 if SERVICE_NAME in ('all', 'init', 'usuario'):
     AUTH_USER_MODEL = 'usuario.Usuario'
+else:
+    AUTH_USER_MODEL = 'shared.Usuario'
+
+
+if SERVICE_NAME in ('all', 'init', 'usuario'):
+
     AUTHENTICATION_BACKENDS = [
         'apps.usuario.authentication.EmailOrUsernameModelBackend',
     ]
+
 else:
-    AUTH_USER_MODEL = 'shared.Usuario'
+
     AUTHENTICATION_BACKENDS = [
         'shared.auth.EmailOrUsernameModelBackend',
     ]
-
 # Email
 EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')

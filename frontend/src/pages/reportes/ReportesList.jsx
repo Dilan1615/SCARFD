@@ -3,6 +3,8 @@ import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import MaintenanceBanner from '../../components/MaintenanceBanner'
 import { ClipboardList, FileText, FileSpreadsheet } from 'lucide-react'
+import GenerarReporteModal from './GenerarReporteModal'
+import { useAuth } from '../../contexts/AuthContext'
 
 const columns = [
   { key: 'nombre', label: 'Nombre' },
@@ -18,9 +20,13 @@ const columns = [
 ]
 
 export default function ReportesList() {
+  const { user } = useAuth()
+  const puedeGenerar = user?.rol === 'ADMIN' || user?.rol === 'DOCENTE'
+
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(true)
   const [serviceDown, setServiceDown] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -45,8 +51,11 @@ export default function ReportesList() {
         </div>
       </div>
       <DataTable title="Reportes" columns={columns} data={data} loading={loading} searchable={false}
-        onAdd={() => alert('Funcionalidad de generación de reportes en desarrollo')}
+        onAdd={puedeGenerar ? () => setModalOpen(true) : undefined}
       />
+      {puedeGenerar && (
+        <GenerarReporteModal open={modalOpen} onClose={() => setModalOpen(false)} onGenerated={load} />
+      )}
     </div>
   )
 }

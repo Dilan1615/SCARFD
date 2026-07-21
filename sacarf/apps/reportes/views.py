@@ -1,3 +1,4 @@
+import os
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -6,18 +7,22 @@ from django.db.models import IntegerField
 from django.db.models.fields.json import KeyTextTransform
 from django.db.models.functions import Cast
 from datetime import datetime
-
+from django.conf import settings
+from django.http import FileResponse
 from .models import Reporte, TipoReporte, FormatoReporte
 from .serializers import ReporteSerializer, GenerarReporteSerializer
 from .services import ReporteService
 from shared.models import Usuario, MateriaModel, CicloModel, HorarioModel
+from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
 
 
 
-class ReporteViewSet(viewsets.ModelViewSet):
+class ReporteViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Reporte.objects.all()
     serializer_class = ReporteSerializer
     permission_classes = [permissions.IsAuthenticated]
+    auditoria_servicio = 'reportes'
+    auditoria_modelo = 'Reporte'
 
     def get_queryset(self):
         user = self.request.user
@@ -85,12 +90,29 @@ class ReporteViewSet(viewsets.ModelViewSet):
             content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
         nombre = f"{titulo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+        ruta_relativa = reporte_service.guardar_archivo(file_buffer, nombre, extension)
+
         reporte = Reporte.objects.create(
             tipo=tipo,
             formato=formato,
             parametros=data,
             generado_por_id=request.user.id,
-            nombre=nombre
+            nombre=nombre,
+            archivo_url=ruta_relativa,
+        )
+
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='CREATE',
+            servicio='reportes',
+            modelo='Reporte',
+            registro_id=reporte.id,
+            descripcion=f"Generó reporte {titulo} en formato {formato}",
+            datos_modificados={'tipo': tipo, 'formato': formato, 'total_registros': len(datos)},
+            ip_origen=_obtener_ip(request),
         )
 
         return Response({
@@ -121,10 +143,18 @@ class ReporteViewSet(viewsets.ModelViewSet):
             return Response({'error': 'El archivo del reporte no está disponible'},
                           status=status.HTTP_404_NOT_FOUND)
 
-        return Response({
-            'message': 'Descarga disponible',
-            'url': reporte.archivo_url
-        })
+        filepath = os.path.join(settings.MEDIA_ROOT, reporte.archivo_url)
+        if not os.path.exists(filepath):
+            return Response({'error': 'El archivo ya no está disponible en el servidor'},
+                          status=status.HTTP_404_NOT_FOUND)
+
+        extension = 'pdf' if reporte.formato == 'PDF' else 'xlsx'
+        content_type = 'application/pdf' if reporte.formato == 'PDF' else \
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+        response = FileResponse(open(filepath, 'rb'), content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{reporte.nombre}.{extension}"'
+        return response
 
     @action(detail=False, methods=['get'])
     def tipos(self, request):

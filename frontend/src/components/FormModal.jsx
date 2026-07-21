@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, Shield, ShieldAlert, ShieldCheck } from 'lucide-react'
 
-export default function FormModal({ open, onClose, title, fields, initialData, onSubmit, loading }) {
+export default function FormModal({ open, onClose, title, fields, initialData, onSubmit, loading, emptyMessage }) {
   const [form, setForm] = useState({})
   const [errors, setErrors] = useState({})
 
@@ -165,6 +165,13 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="px-6 py-5 space-y-4">
+
+          {emptyMessage && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700 text-center">
+              {emptyMessage}
+            </div>
+          )}
+
           {fields.map((field) => (
               <div key={field.key}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -257,7 +264,7 @@ export default function FormModal({ open, onClose, title, fields, initialData, o
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || Boolean(emptyMessage)}
               className="px-5 py-2.5 text-sm font-medium text-white bg-unl-red hover:bg-unl-red-dark rounded-xl transition-all disabled:opacity-50 flex items-center gap-2 shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
             >
               {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}

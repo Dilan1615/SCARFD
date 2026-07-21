@@ -17,13 +17,16 @@ from .serializers import (
     SolicitarRestablecimientoSerializer, RestablecerPasswordSerializer,
 )
 from .permissions import IsAdminForMutation
+from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
 
 
-class UsuarioViewSet(viewsets.ModelViewSet):
+class UsuarioViewSet(AuditoriaMixin, viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
     permission_classes = [IsAdminForMutation]
     filterset_fields = ['rol']
+    auditoria_servicio = 'usuario'
+    auditoria_modelo = 'Usuario'
 
     def get_queryset(self):
         user = self.request.user
@@ -37,8 +40,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         return super().get_permissions()
 
     def perform_destroy(self, instance):
+        usuario_id, usuario_nombre = _datos_usuario(self.request)
         instance.is_active = False
         instance.save()
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='DELETE',
+            servicio='usuario',
+            modelo='Usuario',
+            registro_id=instance.id,
+            descripcion=f"{usuario_nombre} desactivó usuario {instance.email}",
+            datos_modificados={'is_active': False},
+            ip_origen=_obtener_ip(self.request),
+        )
 
     ALLOWED_IMAGE_TYPES = {
         'image/jpeg': '.jpg', 'image/png': '.png',
@@ -72,6 +87,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             serializer.save(foto_referencia_url=foto_url)
         else:
             serializer.save()
+        self.auditar(serializer.instance, 'UPDATE')
 
     @action(detail=False, methods=['post'])
     def register(self, request):
@@ -80,6 +96,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
 
         foto_url = self._handle_foto_upload(request)
         usuario = serializer.save(foto_referencia_url=foto_url or serializer.validated_data.get('foto_referencia_url', ''))
+
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='CREATE',
+            servicio='usuario',
+            modelo='Usuario',
+            registro_id=usuario.id,
+            descripcion=f"Registro nuevo usuario {usuario.email} (rol {usuario.rol})",
+            datos_modificados={'email': usuario.email, 'rol': usuario.rol},
+            ip_origen=_obtener_ip(request),
+        )
+
         return Response(UsuarioSerializer(usuario).data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['get'])
@@ -97,6 +127,20 @@ class UsuarioViewSet(viewsets.ModelViewSet):
             serializer.save(foto_referencia_url=foto_url)
         else:
             serializer.save()
+
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='UPDATE',
+            servicio='usuario',
+            modelo='Usuario',
+            registro_id=usuario.id,
+            descripcion=f"{usuario_nombre} actualizó su perfil",
+            datos_modificados={k: v for k, v in serializer.validated_data.items() if k != 'foto'},
+            ip_origen=_obtener_ip(request),
+        )
+
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
@@ -109,6 +153,19 @@ class UsuarioViewSet(viewsets.ModelViewSet):
         usuario.set_password(serializer.validated_data['new_password'])
         usuario.save()
         update_session_auth_hash(request, usuario)
+
+        usuario_id, usuario_nombre = _datos_usuario(request)
+        registrar_auditoria(
+            usuario_id=usuario_id,
+            usuario_nombre=usuario_nombre,
+            accion='UPDATE',
+            servicio='usuario',
+            modelo='Usuario',
+            registro_id=usuario.id,
+            descripcion=f"{usuario_nombre} cambió su contraseña",
+            ip_origen=_obtener_ip(request),
+        )
+
         return Response({'message': 'Contraseña actualizada exitosamente'})
 
     @action(detail=False, methods=['post'], permission_classes=[permissions.AllowAny])

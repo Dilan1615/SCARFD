@@ -14,7 +14,9 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
+
     'django_prometheus',
+
     'django.contrib.contenttypes',
     'django.contrib.auth',
     'django.contrib.staticfiles',
@@ -25,11 +27,17 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+
     'django_prometheus.middleware.PrometheusBeforeMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django_prometheus.middleware.PrometheusAfterMiddleware',
+
 ]
 
 ROOT_URLCONF = 'monitoring.urls'
@@ -79,5 +87,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
 # URL interna de Prometheus (nombre del servicio en docker-compose)
 PROMETHEUS_URL = os.getenv('PROMETHEUS_URL', 'http://prometheus:9090')
+

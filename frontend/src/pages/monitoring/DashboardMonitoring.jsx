@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Cpu,
   MemoryStick,
@@ -13,6 +14,10 @@ import {
   ScanFace,
   FileBarChart,
   RefreshCw,
+
+  ArrowRight,
+  AlertTriangle,
+
 } from 'lucide-react'
 
 import monitoringService from '../../services/monitoringService'
@@ -21,18 +26,69 @@ import MetricCard from '../../components/MetricCard'
 import LineChart from '../../components/LineChart'
 import BarChartComp from '../../components/BarChart'
 import AlertPanel, { generarAlertas } from '../../components/AlertPanel'
+
+import ActivityLogTable from '../../components/ActivityLogTable'
+
 import MaintenanceBanner from '../../components/MaintenanceBanner'
 
 const INTERVALO_REFRESCO_MS = 15000
 
 export default function DashboardMonitoring() {
   const [datos, setDatos] = useState(null)
+
+  const [logsRecientes, setLogsRecientes] = useState([])
+  const [errorLogs, setErrorLogs] = useState(null)
+
   const [cargando, setCargando] = useState(true)
   const [monitoringDown, setMonitoringDown] = useState(false)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(null)
   const intervaloRef = useRef(null)
 
   const cargarDatos = useCallback(async () => {
+
+    // ── IMPORTANTE ────────────────────────────────────────────────────
+    // Antes esto iba en un único Promise.all([getResumen(), getAuditoria()]):
+    // si CUALQUIERA de las dos fallaba, la promesa combinada rechazaba
+    // completa y setDatos(resumen) nunca se llamaba, aunque el resumen
+    // general sí hubiera respondido bien. Un 4xx en /auditoria/ (no
+    // capturado por el chequeo "!err.response || status >= 500") dejaba
+    // todo el dashboard en blanco sin ningún indicio en pantalla.
+    //
+    // Ahora cada fetch se resuelve de forma independiente: un fallo en
+    // logs de auditoría no debe tumbar el resto del dashboard, y viceversa.
+    const resultados = await Promise.allSettled([
+      monitoringService.getResumen(),
+      monitoringService.getAuditoria({ page: 1, page_size: 5 }),
+    ])
+    const [resResumen, resLogs] = resultados
+
+    if (resResumen.status === 'fulfilled') {
+      setDatos(resResumen.value)
+      setMonitoringDown(false)
+      setUltimaActualizacion(new Date())
+    } else {
+      const err = resResumen.reason
+      console.error('Error al cargar el resumen de monitoreo:', err?.response?.status, err?.response?.data || err)
+      if (!err?.response || err.response.status >= 500) {
+        setMonitoringDown(true)
+      }
+    }
+
+    if (resLogs.status === 'fulfilled') {
+      setLogsRecientes(resLogs.value.results || [])
+      setErrorLogs(null)
+    } else {
+      const err = resLogs.reason
+      console.error('Error al cargar logs de auditoría:', err?.response?.status, err?.response?.data || err)
+      setErrorLogs(
+        err?.response
+          ? `No se pudieron cargar los logs (HTTP ${err.response.status}).`
+          : 'No se pudieron cargar los logs: error de red.'
+      )
+    }
+
+    setCargando(false)
+
     try {
       const resumen = await monitoringService.getResumen()
       setDatos(resumen)
@@ -46,6 +102,7 @@ export default function DashboardMonitoring() {
     } finally {
       setCargando(false)
     }
+
   }, [])
 
   useEffect(() => {
@@ -64,7 +121,14 @@ export default function DashboardMonitoring() {
   }
 
   if (monitoringDown) {
+
+    // Antes: <MaintenanceBanner servicio="monitoreo" /> — el componente
+    // espera la prop `service`, no `servicio`; con el nombre equivocado
+    // el banner mostraba "undefined" en vez de "MONITOREO".
+    return <MaintenanceBanner service="monitoreo" />
+
     return <MaintenanceBanner servicio="monitoreo" />
+
   }
 
   const { servicios = [], infraestructura, backend, base_datos: baseDatos, negocio } = datos || {}
@@ -258,6 +322,33 @@ export default function DashboardMonitoring() {
           />
         </div>
       </section>
+
+
+      {/* ── Logs de actividad del sistema ───────────────────────────── */}
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+            Logs de actividad recientes
+          </h2>
+          <Link
+            to="/monitoreo/logs"
+            className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700"
+          >
+            Ver todos los logs
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+
+        {errorLogs ? (
+          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            {errorLogs} Revisa la consola del navegador para más detalle.
+          </div>
+        ) : (
+          <ActivityLogTable logs={logsRecientes} compacto />
+        )}
+      </section>
+
     </div>
   )
 }

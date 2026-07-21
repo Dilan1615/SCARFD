@@ -1,68 +1,65 @@
 from django.contrib.auth.base_user import BaseUserManager
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
 
-class UsuarioManager(BaseUserManager):
+class SharedUsuarioManager(BaseUserManager):
+    """
+    Manager del espejo. Solo lectura — nunca crea usuarios.
+    """
+
+    def get_by_natural_key(self, email):
+        return self.get(email=email)
 
     def create_user(self, email, password=None, **extra_fields):
-        if not email:
-            raise ValueError("El correo es obligatorio")
-        email = self.normalize_email(email)
-        user = self.model(email=email, **extra_fields)
-        user.set_password(password)
-        user.save(using=self._db)
-        return user
+        raise NotImplementedError(
+            "shared.Usuario es de solo lectura. Cree usuarios en usuario-service."
+        )
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault("is_staff", True)
-        extra_fields.setdefault("is_superuser", True)
-        extra_fields.setdefault("is_active", True)
-        if extra_fields.get("is_staff") is not True:
-            raise ValueError("El superusuario debe tener is_staff=True.")
-        if extra_fields.get("is_superuser") is not True:
-            raise ValueError("El superusuario debe tener is_superuser=True.")
-        return self.create_user(email, password, **extra_fields)
+        raise NotImplementedError(
+            "shared.Usuario es de solo lectura. Cree superusuarios en usuario-service."
+        )
 
 
-class Usuario(AbstractUser):
-    ROL_CHOICES = (
-        ("ADMIN", "Administrador"),
-        ("DOCENTE", "Docente"),
-        ("ESTUDIANTE", "Estudiante"),
-    )
+class Usuario(AbstractBaseUser):
+    """
+    Espejo managed=False de apps.usuario.Usuario.
 
+    Se usa como AUTH_USER_MODEL en los microservicios que NO son
+    usuario-service (academico, asistencia, reportes, monitoring).
+
+    Hereda SOLO AbstractBaseUser (sin PermissionsMixin) para evitar
+    el choque de reverse accessors con usuario.Usuario cuando ambas
+    apps están cargadas en el monolito. Este modelo NUNCA necesita
+    groups ni user_permissions — esos los gestiona usuario-service.
+    """
     username = None
     email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=150, blank=True)
+    last_name = models.CharField(max_length=150, blank=True)
     cedula = models.CharField(max_length=10, unique=True)
     telefono = models.CharField(max_length=15, blank=True)
-    rol = models.CharField(max_length=12, choices=ROL_CHOICES, default="ESTUDIANTE")
+    rol = models.CharField(max_length=12)
     foto_referencia_url = models.URLField(blank=True, null=True)
     intentos_fallidos = models.PositiveIntegerField(default=0)
     bloqueado_hasta = models.DateTimeField(null=True, blank=True)
 
-    objects = UsuarioManager()
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
+    objects = SharedUsuarioManager()
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["cedula"]
 
     class Meta:
-        db_table = "usuario"
         managed = False
-        app_label = 'shared'
-
-    def esta_bloqueado(self):
-        from django.utils import timezone
-        from datetime import timedelta
-        if self.bloqueado_hasta and timezone.now() < self.bloqueado_hasta:
-            return True
-        if self.intentos_fallidos >= 5:
-            self.bloqueado_hasta = timezone.now() + timedelta(minutes=30)
-            self.save()
-            return True
-        return False
+        db_table = "usuario"
+        app_label = "shared"
 
     def __str__(self):
-        return f"{self.email} - {self.get_rol_display()}"
+        return self.email
 
 
 class CarreraModel(models.Model):
@@ -186,4 +183,28 @@ class ReporteModel(models.Model):
     class Meta:
         managed = False
         db_table = 'reporte'
+        app_label = 'shared'
+
+class RegistroAuditoriaModel(models.Model):
+    """
+    Espejo managed=False de apps.monitoring.models.RegistroAuditoria.
+    Los 4 microservicios (usuario/academico/asistencia/reportes) usan ESTE
+    modelo para ESCRIBIR filas de auditoría (vía shared.audit.registrar_auditoria),
+    ya que ninguno tiene instalada la app `apps.monitoring`. El dueño real de
+    la tabla y sus migraciones es monitoring-service.
+    """
+    usuario_id = models.IntegerField(null=True, blank=True)
+    usuario_nombre = models.CharField(max_length=150, default='desconocido')
+    accion = models.CharField(max_length=10)
+    servicio = models.CharField(max_length=20)
+    modelo = models.CharField(max_length=100)
+    registro_id = models.CharField(max_length=50, null=True, blank=True)
+    descripcion = models.CharField(max_length=500)
+    datos_modificados = models.JSONField(null=True, blank=True)
+    ip_origen = models.GenericIPAddressField(null=True, blank=True)
+    fecha_hora = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        managed = False
+        db_table = 'monitoring_registroauditoria'
         app_label = 'shared'
