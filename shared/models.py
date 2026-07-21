@@ -98,6 +98,7 @@ class MateriaModel(models.Model):
     creditos = models.PositiveIntegerField()
     horas_semanales = models.PositiveIntegerField()
     carrera = models.ForeignKey(CarreraModel, on_delete=models.DO_NOTHING, db_constraint=False)
+    ciclo = models.ForeignKey(CicloModel, on_delete=models.DO_NOTHING, db_constraint=False, null=True)
     docente_id = models.IntegerField(null=True, blank=True)
 
     class Meta:

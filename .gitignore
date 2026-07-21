@@ -11,3 +11,4 @@ __pycache__/
 *.log
 db.sqlite3
 db.sqlite3-journal
+services/reportes/media/

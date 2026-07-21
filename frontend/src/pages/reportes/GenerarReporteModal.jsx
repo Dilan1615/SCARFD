@@ -56,7 +56,12 @@ export default function GenerarReporteModal({ open, onClose, onGenerated }) {
 
     setLoading(true)
     try {
-      const payload = { tipo, formato, ...form }
+      const payload = { tipo, formato }
+      Object.entries(form).forEach(([key, value]) => {
+        if (value !== '' && value !== undefined && value !== null) {
+          payload[key] = value
+        }
+      })
       const { data } = await api.post('/reportes/reportes/generar/', payload)
       await descargarArchivo(data.reporte_id, data.nombre, formato === 'PDF' ? 'pdf' : 'xlsx')
       onGenerated?.()

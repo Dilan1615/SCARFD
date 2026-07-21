@@ -2,22 +2,9 @@ import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 import DataTable from '../../components/DataTable'
 import MaintenanceBanner from '../../components/MaintenanceBanner'
-import { ClipboardList, FileText, FileSpreadsheet } from 'lucide-react'
+import { ClipboardList, FileText, FileSpreadsheet, Download } from 'lucide-react'
 import GenerarReporteModal from './GenerarReporteModal'
 import { useAuth } from '../../contexts/AuthContext'
-
-const columns = [
-  { key: 'nombre', label: 'Nombre' },
-  { key: 'tipo_display', label: 'Tipo' },
-  { key: 'formato_display', label: 'Formato', render: (v) => (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100">
-      {v === 'PDF' ? <FileText size={14} className="text-red-500" /> : <FileSpreadsheet size={14} className="text-green-600" />}
-      {v}
-    </span>
-  )},
-  { key: 'fecha_generacion', label: 'Generado' },
-  { key: 'generado_por_nombre', label: 'Generado por' },
-]
 
 export default function ReportesList() {
   const { user } = useAuth()
@@ -27,6 +14,7 @@ export default function ReportesList() {
   const [loading, setLoading] = useState(true)
   const [serviceDown, setServiceDown] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [descargando, setDescargando] = useState(null)
 
   const load = () => {
     setLoading(true)
@@ -37,6 +25,50 @@ export default function ReportesList() {
   }
 
   useEffect(() => { load() }, [])
+
+  const handleDescargar = async (row) => {
+    setDescargando(row.id)
+    try {
+      const res = await api.get(`/reportes/reportes/${row.id}/descargar/`, { responseType: 'blob' })
+      const ext = row.formato === 'PDF' ? 'pdf' : 'xlsx'
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `${row.nombre}.${ext}`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+    } catch (err) {
+      alert(err.response?.data?.error || 'No se pudo descargar el reporte.')
+    } finally {
+      setDescargando(null)
+    }
+  }
+
+  const columns = [
+    { key: 'nombre', label: 'Nombre' },
+    { key: 'tipo_display', label: 'Tipo' },
+    { key: 'formato_display', label: 'Formato', render: (v) => (
+      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-gray-100">
+        {v === 'PDF' ? <FileText size={14} className="text-red-500" /> : <FileSpreadsheet size={14} className="text-green-600" />}
+        {v}
+      </span>
+    )},
+    { key: 'fecha_generacion', label: 'Generado', render: (v) => new Date(v).toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' }) },
+    { key: 'generado_por_nombre', label: 'Generado por' },
+    { key: 'id', label: 'Descargar', render: (_, row) => (
+      <button
+        onClick={() => handleDescargar(row)}
+        disabled={descargando === row.id}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-unl-red hover:bg-unl-red/10 rounded-lg transition-colors disabled:opacity-50"
+      >
+        {descargando === row.id
+          ? <div className="w-3.5 h-3.5 border-2 border-unl-red border-t-transparent rounded-full animate-spin" />
+          : <Download size={14} />}
+        Descargar
+      </button>
+    )},
+  ]
 
   return (
     <div className="space-y-5">

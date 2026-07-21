@@ -1,7 +1,6 @@
 """
 Capa de servicios del monitoring-service.
 
-<<<<<<< HEAD
 Reemplaza a prometheus + node-exporter + cadvisor + postgres-exporter:
 
   - CPU / RAM / disco  → psutil (monta /proc, /sys, / del host)
@@ -34,16 +33,15 @@ SERVICIOS = {
 
 
 # ── Health-check paralelo ─────────────────────────────────────────────
-=======
-Este microservicio NO tiene modelos propios "de negocio": su trabajo es
-1) consultar Prometheus (infraestructura + backend HTTP + Postgres exporter)
-2) hacer ping directo a los otros microservicios (estado activo/caído)
-3) leer los modelos `shared` (misma base de datos, managed=False) para las
-   métricas de negocio de SACARF (usuarios, asistencias, reconocimientos, reportes)
 
-Todo queda expuesto como JSON simple para que el frontend React no tenga que
-hablar PromQL en ningún momento.
-"""
+#Este microservicio NO tiene modelos propios "de negocio": su trabajo es
+#1) consultar Prometheus (infraestructura + backend HTTP + Postgres exporter)
+#2) hacer ping directo a los otros microservicios (estado activo/caído)
+#3) leer los modelos `shared` (misma base de datos, managed=False) para las
+#   métricas de negocio de SACARF (usuarios, asistencias, reconocimientos, reportes)
+
+#Todo queda expuesto como JSON simple para que el frontend React no tenga que
+#hablar PromQL en ningún momento.
 import os
 import time
 import requests
@@ -135,7 +133,7 @@ prom = PrometheusClient()
 # ──────────────────────────────────────────────────────────────────────────
 # Estado de los microservicios (activo / caído / tiempo de respuesta)
 # ──────────────────────────────────────────────────────────────────────────
->>>>>>> moduloJustificacion
+
 def _check_one(nombre, cfg):
     url = f"http://{cfg['host']}:{cfg['port']}{cfg['health_path']}"
     inicio = time.perf_counter()
@@ -157,11 +155,11 @@ def _check_one(nombre, cfg):
 def obtener_estado_servicios():
     resultados = []
     with ThreadPoolExecutor(max_workers=len(SERVICIOS)) as pool:
-<<<<<<< HEAD
+
         futuros = [pool.submit(_check_one, n, c) for n, c in SERVICIOS.items()]
-=======
+
         futuros = [pool.submit(_check_one, nombre, cfg) for nombre, cfg in SERVICIOS.items()]
->>>>>>> moduloJustificacion
+
         for f in as_completed(futuros):
             resultados.append(f.result())
     orden = {n: i for i, n in enumerate(SERVICIOS)}
@@ -169,7 +167,7 @@ def obtener_estado_servicios():
     return resultados
 
 
-<<<<<<< HEAD
+
 # ── Infraestructura: psutil + Docker SDK ───────────────────────────────
 def _docker_client():
     try:
@@ -201,7 +199,7 @@ def obtener_infraestructura():
 
     if not contenedores:
         contenedores.append({'nombre': 'sacarf_monitoring', 'estado': 'corriendo'})
-=======
+
 # ──────────────────────────────────────────────────────────────────────────
 # Infraestructura: CPU, RAM, disco (node-exporter) + contenedores (cAdvisor)
 # ──────────────────────────────────────────────────────────────────────────
@@ -238,21 +236,17 @@ def obtener_infraestructura():
     ]:
         if nombre_esperado not in nombres_vistos:
             contenedores.append({'nombre': nombre_esperado, 'estado': 'detenido'})
->>>>>>> moduloJustificacion
+
 
     return {
         'cpu_percent': cpu_percent,
         'ram_percent': ram_percent,
-<<<<<<< HEAD
-        'disco_percent': disco_percent,
-=======
         'disco_percent': disk_percent,
->>>>>>> moduloJustificacion
         'contenedores': contenedores,
     }
 
 
-<<<<<<< HEAD
+
 # ── Conexión directa a PostgreSQL ─────────────────────────────────────
 def _db_connection():
     return psycopg2.connect(
@@ -382,7 +376,7 @@ def obtener_metricas_bd():
 
 
 # ── Métricas de negocio (ORM Django) ──────────────────────────────────
-=======
+
 # ──────────────────────────────────────────────────────────────────────────
 # Backend: peticiones/min, tiempo de respuesta, errores 4xx/5xx, por servicio
 # (usa las métricas expuestas por django-prometheus en cada microservicio)
@@ -463,7 +457,7 @@ def obtener_metricas_bd():
 # ──────────────────────────────────────────────────────────────────────────
 # Métricas de negocio SACARF (consulta directa a modelos `shared`, misma BD)
 # ──────────────────────────────────────────────────────────────────────────
->>>>>>> moduloJustificacion
+
 def obtener_metricas_negocio():
     from shared.models import Usuario, AsistenciaModel, ReporteModel
     try:
@@ -485,10 +479,9 @@ def obtener_metricas_negocio():
             resultado=False, fecha_hora__date=hoy
         ).count()
     else:
-<<<<<<< HEAD
-=======
+
         # shared.models aún no tiene ReconocimientoModel — ver docs/GUIA_IMPLEMENTACION.md
->>>>>>> moduloJustificacion
+
         reconocimientos_exitosos = None
         reconocimientos_fallidos = None
 

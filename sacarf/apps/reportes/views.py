@@ -35,6 +35,10 @@ class ReporteViewSet(AuditoriaMixin, viewsets.ModelViewSet):
             return self.queryset.annotate(
                 materia_id_int=Cast(KeyTextTransform('materia_id', 'parametros'), IntegerField())
             ).filter(materia_id_int__in=materia_ids)
+        elif user.rol == 'ESTUDIANTE':
+            return self.queryset.annotate(
+                estudiante_id_int=Cast(KeyTextTransform('estudiante_id', 'parametros'), IntegerField())
+            ).filter(estudiante_id_int=user.id)
         return self.queryset.none()
 
     @action(detail=False, methods=['post'])
@@ -133,6 +137,10 @@ class ReporteViewSet(AuditoriaMixin, viewsets.ModelViewSet):
             if request.user.rol == 'DOCENTE':
                 materia_ids = list(MateriaModel.objects.filter(docente_id=request.user.id).values_list('id', flat=True))
                 if reporte.parametros.get('materia_id') not in materia_ids:
+                    return Response({'error': 'No tienes permiso para descargar este reporte'},
+                                  status=status.HTTP_403_FORBIDDEN)
+            elif request.user.rol == 'ESTUDIANTE':
+                if reporte.parametros.get('estudiante_id') != request.user.id:
                     return Response({'error': 'No tienes permiso para descargar este reporte'},
                                   status=status.HTTP_403_FORBIDDEN)
             else:
