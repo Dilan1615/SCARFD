@@ -77,7 +77,26 @@ function CameraModal({ open, onClose, horario, materiaNombre, onSubmit }) {
       await onSubmit(captured, horario)
       onClose()
     } catch (err) {
-      setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar asistencia')
+      const data = err.response?.data
+      let msg = 'Error al registrar asistencia'
+      if (data) {
+        if (data.message) {
+          msg = data.message
+        } else if (data.error) {
+          msg = data.error
+        } else if (data.non_field_errors) {
+          msg = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors
+        } else {
+          const firstKey = Object.keys(data)[0]
+          if (firstKey) {
+            const val = data[firstKey]
+            msg = Array.isArray(val) ? val[0] : String(val)
+          }
+        }
+      } else if (err.message) {
+        msg = err.message
+      }
+      setError(msg)
     } finally {
       setSubmitting(false)
     }

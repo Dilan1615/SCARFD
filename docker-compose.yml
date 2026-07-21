@@ -40,8 +40,12 @@ services:
       BREVO_API_KEY: ${BREVO_API_KEY:-}
       BREVO_FROM_EMAIL: ${BREVO_FROM_EMAIL:-josephsebastiannq@gmail.com}
       BREVO_FROM_NAME: ${BREVO_FROM_NAME:-SACARF}
-      # ── Monitoreo (nuevo) ──────────────────────────────────────────
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-sacarf-images}
+      REKOGNITION_COLLECTION_ID: ${REKOGNITION_COLLECTION_ID:-sacarf_faces}
     depends_on:
       db:
         condition: service_healthy

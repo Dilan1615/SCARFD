@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, status, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -17,8 +18,9 @@ from .serializers import (
 )
 from .services import AwsRekognitionService
 from shared.models import HorarioModel, MateriaModel
-# ── Auditoría (nuevo) ────────────────────────────────────────────────────
 from shared.audit import AuditoriaMixin, registrar_auditoria, _datos_usuario, _obtener_ip
+
+logger = logging.getLogger(__name__)
 
 
 class AsistenciaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
@@ -58,14 +60,24 @@ class AsistenciaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
 
         resultado = aws_service.buscar_rostro(image_bytes)
 
-        if not resultado or float(resultado['confidence']) < 85.0:
+        if not resultado.get('success'):
+            error_msg = resultado.get('error', 'No se pudo reconocer el rostro')
+            logger.warning("Reconocimiento fallido para estudiante %s: %s", estudiante_id, error_msg)
             return Response({
                 'success': False,
-                'message': 'No se pudo reconocer el rostro o confianza baja',
-                'confidence': resultado['confidence'] if resultado else 0
+                'message': error_msg,
+                'confidence': resultado.get('confidence', 0)
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if float(resultado['confidence']) < 85.0:
+            return Response({
+                'success': False,
+                'message': f'Confianza insuficiente ({resultado["confidence"]:.1f}%). Mínimo requerido: 85%.',
+                'confidence': resultado['confidence']
             }, status=status.HTTP_400_BAD_REQUEST)
 
         if int(resultado['external_id']) != estudiante_id:
+            logger.warning("Intento de suplantación: rostro de estudiante %s no coincide con %s", resultado['external_id'], estudiante_id)
             return Response({
                 'success': False,
                 'message': 'El rostro no coincide con el estudiante registrado'
@@ -104,9 +116,6 @@ class AsistenciaViewSet(AuditoriaMixin, viewsets.ModelViewSet):
                 reconocimiento=reconocimiento
             )
 
-        # ── Auditoría (nuevo) ──────────────────────────────────────────
-        # Esta acción no pasa por perform_create (es un @action manual),
-        # así que se audita explícitamente.
         usuario_id, usuario_nombre = _datos_usuario(request)
         registrar_auditoria(
             usuario_id=usuario_id,
@@ -283,10 +292,12 @@ class RegistroFacialViewSet(AuditoriaMixin, viewsets.ModelViewSet):
 
         resultado = aws_service.indexar_rostro(image_bytes, str(request.user.id))
 
-        if not resultado:
+        if not resultado.get('success'):
+            error_msg = resultado.get('error', 'No se pudo indexar el rostro')
+            logger.warning("Indexación fallida para usuario %s: %s", request.user.id, error_msg)
             return Response({
                 'success': False,
-                'message': 'No se pudo indexar el rostro. Intenta con otra imagen.'
+                'message': error_msg
             }, status=status.HTTP_400_BAD_REQUEST)
 
         registro = RegistroFacial.objects.create(
@@ -300,7 +311,6 @@ class RegistroFacialViewSet(AuditoriaMixin, viewsets.ModelViewSet):
             request.user.foto_referencia_url = imagen_url
             request.user.save()
 
-        # ── Auditoría (nuevo) ──────────────────────────────────────────
         usuario_id, usuario_nombre = _datos_usuario(request)
         registrar_auditoria(
             usuario_id=usuario_id,

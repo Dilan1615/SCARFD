@@ -1,7 +1,10 @@
+import logging
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import ModelBackend
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
+
+logger = logging.getLogger(__name__)
 
 
 class EmailOrUsernameModelBackend(ModelBackend):
@@ -26,5 +29,6 @@ class CustomJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
         try:
             return super().authenticate(request)
-        except AuthenticationFailed:
+        except AuthenticationFailed as e:
+            logger.debug("JWT authentication failed: %s", e)
             return None

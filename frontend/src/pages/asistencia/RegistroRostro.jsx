@@ -86,7 +86,24 @@ export default function RegistroRostro() {
       if (!err.response || err.response.status >= 500) {
         setServiceDown(true)
       } else {
-        setError(err.response?.data?.message || err.response?.data?.error || 'Error al registrar el rostro')
+        const data = err.response?.data
+        let msg = 'Error al registrar el rostro'
+        if (data) {
+          if (data.message) {
+            msg = data.message
+          } else if (data.error) {
+            msg = data.error
+          } else if (data.non_field_errors) {
+            msg = Array.isArray(data.non_field_errors) ? data.non_field_errors[0] : data.non_field_errors
+          } else {
+            const firstKey = Object.keys(data)[0]
+            if (firstKey) {
+              const val = data[firstKey]
+              msg = Array.isArray(val) ? val[0] : String(val)
+            }
+          }
+        }
+        setError(msg)
       }
     } finally {
       setSubmitting(false)

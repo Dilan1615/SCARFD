@@ -3,6 +3,16 @@ from django.contrib.auth.models import AbstractBaseUser
 from django.db import models
 
 
+class DiaSemana(models.TextChoices):
+    LUNES = 'LUNES', 'Lunes'
+    MARTES = 'MARTES', 'Martes'
+    MIERCOLES = 'MIERCOLES', 'Miércoles'
+    JUEVES = 'JUEVES', 'Jueves'
+    VIERNES = 'VIERNES', 'Viernes'
+    SABADO = 'SABADO', 'Sábado'
+    DOMINGO = 'DOMINGO', 'Domingo'
+
+
 class SharedUsuarioManager(BaseUserManager):
     """
     Manager del espejo. Solo lectura — nunca crea usuarios.
@@ -110,7 +120,7 @@ class MateriaModel(models.Model):
 
 
 class HorarioModel(models.Model):
-    dia_semana = models.CharField(max_length=10)
+    dia_semana = models.CharField(max_length=10, choices=DiaSemana.choices)
     hora_inicio = models.TimeField()
     hora_fin = models.TimeField()
     minutos_tolerancia = models.PositiveIntegerField(default=10)
