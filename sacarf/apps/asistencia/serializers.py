@@ -46,16 +46,24 @@ class AsistenciaSerializer(serializers.ModelSerializer):
     estudiante_nombre = serializers.SerializerMethodField()
     horario_info = serializers.SerializerMethodField()
     estado_display = serializers.SerializerMethodField()
+    justificacion_info = serializers.SerializerMethodField()
 
     class Meta:
         model = Asistencia
         fields = ['id', 'fecha', 'hora_registro', 'estado', 'estado_display',
                   'confianza', 'estudiante_id', 'estudiante_nombre', 'horario_id',
-                  'horario_info', 'reconocimiento']
+                  'horario_info', 'reconocimiento', 'justificacion_info']
         read_only_fields = ['id', 'fecha', 'hora_registro']
 
     def get_estudiante_nombre(self, obj):
         return _get_usuario_nombre(obj.estudiante_id)
+
+    def get_justificacion_info(self, obj):
+        try:
+            j = obj.justificacion
+        except Justificacion.DoesNotExist:
+            return None
+        return {'estado': j.estado, 'comentario_docente': j.comentario_docente}
 
     def get_horario_info(self, obj):
         try:
@@ -137,7 +145,8 @@ class JustificacionSerializer(serializers.ModelSerializer):
                   'estado_display', 'asistencia', 'estudiante_id', 'estudiante_nombre',
                   'docente_aprueba_id', 'docente_aprueba_nombre', 'fecha_respuesta',
                   'comentario_docente']
-        read_only_fields = ['id', 'fecha_solicitud', 'fecha_respuesta']
+        read_only_fields = ['id', 'fecha_solicitud', 'fecha_respuesta', 'estado',
+                             'docente_aprueba_id', 'comentario_docente', 'estudiante_id']
         extra_kwargs = {'documento': {'required': True}}
 
     def get_estudiante_nombre(self, obj):

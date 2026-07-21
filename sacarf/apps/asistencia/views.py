@@ -153,13 +153,33 @@ class JustificacionViewSet(viewsets.ModelViewSet):
                           status=status.HTTP_403_FORBIDDEN)
 
         data = request.data.copy()
-        data['estudiante_id'] = request.user.id
         asistencia_id = data.get('asistencia')
+        existente = None
         if asistencia_id:
             get_object_or_404(Asistencia, id=asistencia_id, estudiante_id=request.user.id)
+            existente = Justificacion.objects.filter(asistencia_id=asistencia_id).first()
+
+        if existente:
+            if existente.estado != 'RECHAZADA':
+                return Response(
+                    {'error': 'Ya existe una justificación para esta falta que no fue rechazada'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Reenvío tras rechazo: se actualiza el mismo registro y vuelve a quedar PENDIENTE
+            serializer = self.get_serializer(existente, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(
+                estudiante_id=request.user.id,
+                estado='PENDIENTE',
+                docente_aprueba_id=None,
+                fecha_respuesta=None,
+                comentario_docente=''
+            )
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         serializer = self.get_serializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
+        serializer.save(estudiante_id=request.user.id)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])

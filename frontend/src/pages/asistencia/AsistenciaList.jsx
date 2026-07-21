@@ -72,15 +72,38 @@ export default function AsistenciaList() {
     { key: 'horario_info', label: 'Materia', render: (v) => v?.materia || '-' },
     { key: 'horario_info', label: 'Aula', render: (v) => v?.aula || '-' },
     ...(isEstudiante ? [{
-      key: 'id', label: 'Acciones', render: (_, r) => r.estado === 'AUSENTE' ? (
-        <button
-          onClick={() => setJustificando(r)}
-          className="p-2 text-gray-400 hover:text-unl-red hover:bg-unl-red/10 rounded-lg transition-all"
-          title="Subir comprobante médico"
-        >
-          <FileCheck2 size={15} />
-        </button>
-      ) : null
+      key: 'id', label: 'Justificación', render: (_, r) => {
+        const j = r.justificacion_info
+        if (r.estado !== 'AUSENTE' || !j) {
+          return r.estado === 'AUSENTE' ? (
+            <button
+              onClick={() => setJustificando(r)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-unl-red bg-unl-red/10 hover:bg-unl-red/20 rounded-lg transition-all"
+            >
+              <FileCheck2 size={13} />
+              <span>Subir comprobante</span>
+            </button>
+          ) : null
+        }
+        if (j.estado === 'PENDIENTE') {
+          return <span className="text-xs text-amber-600 font-medium">En revisión</span>
+        }
+        if (j.estado === 'RECHAZADA') {
+          return (
+            <div className="space-y-1">
+              <p className="text-xs text-red-600">Rechazado: {j.comentario_docente || 'sin comentario'}</p>
+              <button
+                onClick={() => setJustificando(r)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-unl-red bg-unl-red/10 hover:bg-unl-red/20 rounded-lg transition-all"
+              >
+                <FileCheck2 size={13} />
+                <span>Reenviar comprobante</span>
+              </button>
+            </div>
+          )
+        }
+        return null
+      }
     }] : []),
   ]
 
