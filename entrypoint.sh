@@ -5,7 +5,7 @@ SERVICE_NAME="${SERVICE_NAME:-all}"
 SERVICE_PORT="${SERVICE_PORT:-8000}"
 DEBUG="${DEBUG:-True}"
 
-# ── Colores para logs ──────────────────────────────────────────────────
+# â”€â”€ Colores para logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
@@ -15,9 +15,9 @@ log()   { echo -e "${GREEN}[INIT]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[INIT]${NC} $1"; }
 error() { echo -e "${RED}[INIT]${NC} $1" >&2; }
 
-# ── Utilidad: esperar a que PostgreSQL esté listo ──────────────────────
+# â”€â”€ Utilidad: esperar a que PostgreSQL estÃ© listo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 wait_for_db() {
-    log "Verificando conexión a PostgreSQL..."
+    log "Verificando conexiÃ³n a PostgreSQL..."
     local retries=30
     while [ $retries -gt 0 ]; do
         if python -c "
@@ -40,38 +40,38 @@ except Exception:
         retries=$((retries - 1))
         sleep 1
     done
-    error "PostgreSQL no respondió tras 30 intentos."
+    error "PostgreSQL no respondiÃ³ tras 30 intentos."
     exit 1
 }
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 #  CONTENEDOR init: Migraciones + superusuario + collectstatic
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 if [ "$SERVICE_NAME" = "init" ]; then
     log "=== MODO INIT ==="
     log "SERVICE_NAME=$SERVICE_NAME  DEBUG=$DEBUG"
 
     wait_for_db
 
-    # ── 1. Migraciones ────────────────────────────────────────────────
+    # â”€â”€ 1. Migraciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     log "Aplicando migraciones..."
     python sacarf/manage.py migrate --noinput 2>&1
     log "Migraciones completadas."
 
-    # ── 2. makemigrations solo en modo DEBUG (desarrollo) ─────────────
+    # â”€â”€ 2. makemigrations solo en modo DEBUG (desarrollo) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if [ "$DEBUG" = "True" ]; then
         log "Modo DEBUG: verificando migraciones pendientes..."
         python sacarf/manage.py makemigrations --check --noinput 2>&1 || {
-            warn "Hay cambios de modelo sin migración. Generando..."
+            warn "Hay cambios de modelo sin migraciÃ³n. Generando..."
             python sacarf/manage.py makemigrations --noinput 2>&1
             log "Migraciones generadas. Re-aplicando..."
             python sacarf/manage.py migrate --noinput 2>&1
         }
     else
-        log "Modo PRODUCCIÓN: makemigrations omitido (las migraciones deben estar en el repo)."
+        log "Modo PRODUCCIÃ“N: makemigrations omitido (las migraciones deben estar en el repo)."
     fi
 
-    # ── 3. Superusuario por defecto ───────────────────────────────────
+    # â”€â”€ 3. Superusuario por defecto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     log "Verificando superusuario admin..."
     python sacarf/manage.py shell -c "
 import os, django
@@ -93,15 +93,15 @@ else:
     print(f'Superusuario {email} ya existe.')
 " 2>&1
 
-    # ── 4. Collectstatic (producción) ─────────────────────────────────
+    # â”€â”€ 4. Collectstatic (producciÃ³n) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if [ "$DEBUG" != "True" ]; then
-        log "Recolectando archivos estáticos..."
+        log "Recolectando archivos estÃ¡ticos..."
         python sacarf/manage.py collectstatic --noinput 2>&1
-        log "Archivos estáticos recolectados."
+        log "Archivos estÃ¡ticos recolectados."
     fi
 
-    # ── 5. Verificar que la tabla de auditoría existe ──────────────────
-    log "Verificando tabla de auditoría..."
+    # â”€â”€ 5. Verificar que la tabla de auditorÃ­a existe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    log "Verificando tabla de auditorÃ­a..."
     python sacarf/manage.py shell -c "
 import os, django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'sacarf.settings')
@@ -127,7 +127,7 @@ with connection.cursor() as cursor:
 
     log "=== INIT COMPLETADO ==="
 
-    echo "Creando datos de demostración (docente, estudiante, materia y falta de ejemplo)..."
+    echo "Creando datos de demostraciÃ³n (docente, estudiante, materia y falta de ejemplo)..."
     python sacarf/manage.py shell -c "
 from datetime import date, timedelta
 from apps.usuario.models import Usuario
@@ -153,7 +153,7 @@ if creado:
     print('Estudiante demo creado: estudiante@sacarf.com / estudiante123')
 
 carrera, _ = Carrera.objects.get_or_create(
-    codigo='SIS', defaults=dict(nombre='Ingeniería en Sistemas', duracion=9, modalidad='PRESENCIAL')
+    codigo='SIS', defaults=dict(nombre='IngenierÃ­a en Sistemas', duracion=9, modalidad='PRESENCIAL')
 )
 ciclo, _ = Ciclo.objects.get_or_create(
     num=1, carrera=carrera,
@@ -161,7 +161,7 @@ ciclo, _ = Ciclo.objects.get_or_create(
 )
 materia, _ = Materia.objects.get_or_create(
     codigo='SIS101',
-    defaults=dict(nombre='Programación I', creditos=4, horas_semanales=4,
+    defaults=dict(nombre='ProgramaciÃ³n I', creditos=4, horas_semanales=4,
                   carrera=carrera, ciclo=ciclo, docente_id=docente.id)
 )
 if materia.docente_id != docente.id:
@@ -180,37 +180,37 @@ _, creada = Asistencia.objects.get_or_create(
 )
 if creada:
     print('Falta de ejemplo (AUSENTE) creada para subir el comprobante')
-print('Datos de demostración listos')
+print('Datos de demostraciÃ³n listos')
 "
-    echo "Inicialización completada."
+    echo "InicializaciÃ³n completada."
     exit 0
 fi
 
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 #  MICROSERVICIOS: Iniciar servidor
-# ═══════════════════════════════════════════════════════════════════════
+# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 log "=== INICIANDO SERVICIO: $SERVICE_NAME ==="
 log "Puerto: $SERVICE_PORT  DEBUG: $DEBUG"
 
 # Verificar que el manage.py del microservicio existe
 MANAGE_PY="services/$SERVICE_NAME/manage.py"
 if [ ! -f "$MANAGE_PY" ]; then
-    error "No se encontró $MANAGE_PY"
+    error "No se encontrÃ³ $MANAGE_PY"
     exit 1
 fi
 
-# ── Desarrollo: runserver ──────────────────────────────────────────────
+# â”€â”€ Desarrollo: runserver â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if [ "$DEBUG" = "True" ]; then
     log "Modo DESARROLLO: Django runserver"
     exec python "$MANAGE_PY" runserver 0.0.0.0:"$SERVICE_PORT"
 fi
 
-# ── Producción: gunicorn ──────────────────────────────────────────────
-log "Modo PRODUCCIÓN: gunicorn"
+# â”€â”€ ProducciÃ³n: gunicorn â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+log "Modo PRODUCCIÃ“N: gunicorn"
 
 # Cada manage.py agrega /app y /app/sacarf al sys.path.
-# Gunicorn necesita lo mismo vía PYTHONPATH.
-# El wsgi.py de cada microservicio está en services/$SERVICE_NAME/$SERVICE_NAME/wsgi.py
+# Gunicorn necesita lo mismo vÃ­a PYTHONPATH.
+# El wsgi.py de cada microservicio estÃ¡ en services/$SERVICE_NAME/$SERVICE_NAME/wsgi.py
 export PYTHONPATH="/app:/app/sacarf:/app/services/$SERVICE_NAME"
 export DJANGO_SETTINGS_MODULE="${SERVICE_NAME}.settings"
 WSGI_MODULE="${SERVICE_NAME}.wsgi"

@@ -285,11 +285,26 @@ sacarf/
 │   ├── reportes/                    # App reportes (código fuente)
 │   └── monitoring/                  # App monitoreo (código fuente)
 │
+├── docs/
+│   └── pruebas/                     # Plan de pruebas detallado + informes .docx
+│       ├── plan-pruebas-detallado.md
+│       ├── shared.docx
+│       ├── usuario.docx
+│       ├── academico.docx
+│       ├── asistencia.docx
+│       ├── reportes.docx
+│       ├── monitoring.docx
+│       ├── informe-global.docx
+│       └── resumen-ejecutivo.docx
+│
 ├── shared/                          # Paquete de modelos compartidos (solo lectura)
 │   ├── __init__.py
 │   ├── models.py                    # Modelos duplicados con managed = False
 │   ├── auth.py                      # EmailOrUsernameModelBackend + CustomJWTAuthentication
-│   └── permissions.py               # IsAdminForMutation
+│   ├── permissions.py               # IsAdminForMutation
+│   ├── audit.py                     # Auditoría centralizada (AuditoriaMixin + registrar_auditoria)
+│   ├── clients.py                   # Clientes HTTP entre microservicios
+│   └── tests.py                     # 58 pruebas del módulo compartido
 │
 ├── services/                        # Proyectos Django independientes (microservicios)
 │   ├── usuario/
@@ -575,14 +590,46 @@ docker-compose start academico-service
 
 ### Pruebas unitarias de Django
 
-```bash
-# Todas las pruebas (usa el manage.py raíz, compatible con SQLite local)
-cd sacarf
-python manage.py test apps/usuario/tests --verbosity=0
-python manage.py test apps/academico/tests --verbosity=0
-python manage.py test apps/asistencia/tests --verbosity=0
-python manage.py test apps/reportes/tests --verbosity=0
+El proyecto cuenta con **339 pruebas automatizadas** distribuidas en 6 módulos, todas pasando al 100%.
 
+**Requisito:** Las pruebas se ejecutan con `SERVICE_NAME=all` (modo monolito) y SQLite en memoria.
+
+```bash
+# Configurar entorno
+cd sacarf
+$env:PYTHONPATH = "C:\ruta\a\sacarf\sacarf"
+$env:SERVICE_NAME = "all"
+$env:DB_NAME = ":memory:"
+$env:DB_ENGINE = "django.db.backends.sqlite3"
+# (más variables de entorno necesarias, ver conftest.py)
+
+# Ejecutar pruebas de un módulo
+python -m pytest sacarf/apps/usuario/tests.py -v --tb=short
+
+# Ejecutar pruebas de todos los módulos (uno por uno en Windows)
+Get-ChildItem -Path sacarf/apps/*/tests.py | ForEach-Object { $_.FullName } | ForEach-Object { python -m pytest $_ -v --tb=short }
+
+# Ejecutar también las de shared
+python -m pytest shared/tests.py -v --tb=short
+```
+
+**Resultados:**
+
+| Módulo | Archivo | Pruebas | Estado |
+|--------|---------|--------:|--------|
+| shared | `shared/tests.py` | 58 | ✅ 100% |
+| usuario | `sacarf/apps/usuario/tests.py` | 87 | ✅ 100% |
+| academico | `sacarf/apps/academico/tests.py` | 77 | ✅ 100% |
+| asistencia | `sacarf/apps/asistencia/tests.py` | 55 | ✅ 100% |
+| reportes | `sacarf/apps/reportes/tests.py` | 34 | ✅ 100% |
+| monitoring | `sacarf/apps/monitoring/tests.py` | 28 | ✅ 100% |
+| **Total** | | **339** | **✅ 100%** |
+
+**Tecnologías de prueba:** pytest 9.1.1, pytest-django 4.12, unittest.mock, freezegun.
+
+**Documentación detallada:** `docs/pruebas/plan-pruebas-detallado.md` — contiene el plan de pruebas completo con descripción de cada test, qué valida, y la arquitectura de pruebas.
+
+```bash
 # Frontend
 cd frontend
 npm run lint
@@ -811,6 +858,24 @@ Los campos de `monitoring_registroauditoria`:
 | datos_modificados | JSON | Snapshot de cambios (antes/después) |
 | ip_origen | String | IP del cliente |
 | fecha_hora | DateTime | Timestamp automático |
+
+---
+
+## Documentación de Pruebas
+
+El directorio `docs/pruebas/` contiene el plan detallado y los informes generados:
+
+| Archivo | Descripción |
+|---------|-------------|
+| `plan-pruebas-detallado.md` | Plan de pruebas completo — 339 tests con descripción, validación y arquitectura |
+| `shared.docx` | Informe del módulo compartido (58 tests) |
+| `usuario.docx` | Informe del módulo usuario (87 tests) |
+| `academico.docx` | Informe del módulo académico (77 tests) |
+| `asistencia.docx` | Informe del módulo asistencia (55 tests) |
+| `reportes.docx` | Informe del módulo reportes (34 tests) |
+| `monitoring.docx` | Informe del módulo monitorización (28 tests) |
+| `informe-global.docx` | Informe consolidado con todos los módulos |
+| `resumen-ejecutivo.docx` | Resumen ejecutivo con resultados y tecnología |
 
 ---
 

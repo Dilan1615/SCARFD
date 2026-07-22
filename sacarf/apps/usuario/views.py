@@ -117,8 +117,11 @@ class UsuarioViewSet(AuditoriaMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['put', 'patch'])
+    @action(detail=False, methods=['get', 'put', 'patch'])
     def perfil(self, request):
+        if request.method == 'GET':
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
         usuario = request.user
         serializer = self.get_serializer(usuario, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -143,7 +146,7 @@ class UsuarioViewSet(AuditoriaMixin, viewsets.ModelViewSet):
 
         return Response(serializer.data)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], url_path='cambiar-password')
     def cambiar_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
